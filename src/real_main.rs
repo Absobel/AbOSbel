@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::print;
 use crate::println;
 use crate::vga_buffer::Color4b::*;
 use crate::vga_buffer::*;
@@ -22,7 +23,7 @@ fn copypasta() {
 
     for (i, b) in copypasta.chars().enumerate() {
         WRITER!().change_foreground_color(ALL_COLORS[i % 15]);
-        println!("{b}")
+        print!("{b}")
     }
 }
 
