@@ -1,8 +1,8 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::vga_buffer::Color4b::*;
 use crate::vga_buffer::*;
+use crate::vga_buffer::Color4b::*;
 
 pub const VGA_BUFFER: *mut u8 = 0xb8000 as *mut u8;
 
