@@ -1,9 +1,10 @@
 #![no_std]
 #![no_main]
 
+mod macros;
+mod prelude;
 mod real_main;
 mod vga_buffer;
-mod prelude;
 
 use real_main::*;
 
