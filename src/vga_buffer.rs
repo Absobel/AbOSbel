@@ -98,7 +98,7 @@ pub struct ScreenChar {
 }
 
 impl ScreenChar {
-    pub fn new(ascii_character: u8, color_code: ColorCode) -> Self {
+    fn new(ascii_character: u8, color_code: ColorCode) -> Self {
         let color_code_byte = color_code.into();
         ScreenChar {
             ascii_character,
@@ -140,12 +140,12 @@ impl Writer {
         }
     }
 
-    pub fn write_free(&mut self, row: usize, col: usize, byte: u8) {
+    fn write_free(&mut self, row: usize, col: usize, byte: u8) {
         self.buffer
             .write(row, col, ScreenChar::new(byte, self.color_code));
     }
 
-    pub fn write_byte(&mut self, byte: u8) {
+    fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
             byte => {
@@ -166,14 +166,16 @@ impl Writer {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
                 let pxl = self.buffer.read(row, col);
-                self.buffer.write(row-1, col, pxl);
-                if row == BUFFER_HEIGHT {self.write_byte(b' ')}
+                self.buffer.write(row - 1, col, pxl);
+                if row == BUFFER_HEIGHT - 1 {
+                    self.write_free(row, col, b' ');
+                }
                 self.column_position = 0;
             }
         }
     }
 
-    pub fn write_string(&mut self, s: &str) {
+    fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {
             match byte {
                 // printable ASCII byte or newline
