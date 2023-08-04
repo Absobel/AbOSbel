@@ -3,6 +3,7 @@
 
 mod real_main;
 mod vga_buffer;
+mod prelude;
 
 use real_main::*;
 
