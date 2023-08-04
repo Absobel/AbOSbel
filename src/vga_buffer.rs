@@ -1,16 +1,6 @@
 use core::fmt;
 use volatile::Volatile;
 
-// Colors :
-// 0000 : BLACK        1000 : DARK GRAY
-// 0001 : BLUE         1001 : LIGHT BLUE
-// 0010 : GREEN        1010 : LIGHT GREEN
-// 0011 : CYAN         1011 : LIGHT CYAN
-// 0100 : RED          1100 : LIGHT RED
-// 0101 : MAGENTA      1101 : PINK
-// 0110 : BROWN        1110 : YELLOW
-// 0111 : LIGHT GRAY   1111 : WHITE
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -63,15 +53,15 @@ impl ColorCode {
         }
     }
 
-    pub fn change_foreground_color(&mut self, foreground_color: Color4b) {
+    fn change_foreground_color(&mut self, foreground_color: Color4b) {
         self.foreground_color = foreground_color;
     }
 
-    pub fn change_background_color(&mut self, background_color: Color3b) {
+    fn change_background_color(&mut self, background_color: Color3b) {
         self.background_color = background_color;
     }
 
-    pub fn change_blink(&mut self, blink: bool) {
+    fn change_blink(&mut self, blink: bool) {
         self.blink = blink;
     }
 }

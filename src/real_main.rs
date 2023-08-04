@@ -1,24 +1,8 @@
+use crate::prelude::*;
+use crate::println;
 use crate::vga_buffer::Color4b::*;
-use crate::vga_buffer::{Buffer, Color3b, Color4b, ColorCode, Writer};
-
-use core::fmt::Write;
-
-use lazy_static::lazy_static;
-use spin::Mutex;
-
-const VGA_BUFFER: *mut u8 = 0xb8000 as *mut u8;
-
-lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new(
-        ColorCode::new(Black, Color3b::LightGray, false),
-        unsafe { &mut *(VGA_BUFFER as *mut Buffer) }
-    ));
-}
-macro_rules! WRITER {
-    () => {
-        WRITER.lock()
-    };
-}
+use crate::vga_buffer::*;
+use crate::WRITER;
 
 pub fn main() {
     WRITER!().clear();
@@ -38,12 +22,12 @@ fn copypasta() {
 
     for (i, b) in copypasta.chars().enumerate() {
         WRITER!().change_foreground_color(ALL_COLORS[i % 15]);
-        write!(WRITER!(), "{b}").unwrap();
+        println!("{b}")
     }
 }
 
 // DEBUG
 #[allow(dead_code)]
 pub fn hello_world() {
-    write!(WRITER!(), "Hello World!").unwrap();
+    println!("Hello World!");
 }
