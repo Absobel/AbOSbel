@@ -4,7 +4,6 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 
-use crate::*;
 use Color4b::*;
 
 // CONSTS
