@@ -1,9 +1,9 @@
 This is my own OS ! And it's written in Rust because I use Rust btw.
 I don't think it runs on something other than Linux though but never tried it.
 
-I'm following this (tutorial)[https://os.phil-opp.com/] but changed a few things along the way.
+I'm following this [tutorial](https://os.phil-opp.com/) but changed a few things along the way.
 
-# Installation
+## Installation
 
 You obvioulsy must have rustup and cargo installed. But you also need to install QEMU the virtual machine that will run the OS.
 It is also possible to just download the binary file and run it on your computer but it's not recommended as I've never tested it.
@@ -16,7 +16,7 @@ cd AbOSbel
 cargo run
 ```
 
-# Features
+## Features
 
 - [x] VGA text mode
 - [x] Serial port communication (for debugging)
