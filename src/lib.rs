@@ -7,7 +7,7 @@
 #![reexport_test_harness_main = "test_main"]
 
 pub mod serial;
-pub mod vga_buffer;
+pub mod vga;
 
 // CORE FOR TESTS
 
