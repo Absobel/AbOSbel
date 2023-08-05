@@ -1,6 +1,6 @@
-use crate::*;
+use crate::println;
 
 pub fn main() {
-    WRITER!().clear();
-    panic!("Hello, panic!");
+    println!("Hello World{}", "!");
+    panic!("Some panic message");
 }
