@@ -3,46 +3,28 @@
 
 #![no_std]
 #![no_main]
-#![feature(custom_test_frameworks)]
-#![test_runner(test_runner)]
-#![reexport_test_harness_main = "test_main"]
 
+use core::panic::PanicInfo;
 use ab_os_bel::{exit_qemu, QemuExitCode, serial_print, serial_println};
 
 // CORE
 
 #[no_mangle] // don't mangle the name of this function
 pub extern "C" fn _start() -> ! {
-    test_main();
-
+    serial_print!("should_panic::should_fail...\t");
+    should_fail();
+    serial_println!("[test did not panic");
     loop {}
 }
 
-use core::panic::PanicInfo;
+fn should_fail() {
+    serial_print!("should_panic::should_fail... ");
+    assert_eq!(0, 1);
+}
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     serial_println!("[ok]");
     exit_qemu(QemuExitCode::Success);
     loop {}
-}
-
-// TO RUN TESTS
-
-pub fn test_runner(tests: &[&dyn Fn()]) {
-    serial_println!("Running {} test", tests.len());
-    for test in tests {
-        test();
-        serial_println!("[test did not panic]");
-        exit_qemu(QemuExitCode::Failed);
-    }
-    unreachable!();
-}
-
-// TESTS
-
-#[test_case]
-fn should_fail() {
-    serial_print!("should_panic::should_fail... ");
-    assert_eq!(0, 1);
 }
