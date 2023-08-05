@@ -4,8 +4,8 @@
 #![no_std]
 #![no_main]
 
+use ab_os_bel::{exit_qemu, serial_print, serial_println, QemuExitCode};
 use core::panic::PanicInfo;
-use ab_os_bel::{exit_qemu, QemuExitCode, serial_print, serial_println};
 
 // CORE
 

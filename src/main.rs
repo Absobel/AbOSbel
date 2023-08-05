@@ -6,8 +6,8 @@
 
 mod real_main;
 
-use real_main::*;
 use ab_os_bel::println;
+use real_main::*;
 
 // PANIC
 

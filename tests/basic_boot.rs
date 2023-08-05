@@ -27,6 +27,7 @@ fn panic(info: &PanicInfo) -> ! {
 use ab_os_bel::println;
 
 #[test_case]
-fn no_panic_println() {               // Tests if println still works right after boot
+fn no_panic_println() {
+    // Tests if println still works right after boot
     println!("test_println output");
 }

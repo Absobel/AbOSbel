@@ -132,8 +132,8 @@ impl fmt::Write for Writer {
 
 mod tests {
     #[allow(unused_imports)]
-    use { super::*, crate::println };
-    
+    use {super::*, crate::println};
+
     #[test_case]
     fn writer_println_output() {
         let mut writer = Writer::new_default();

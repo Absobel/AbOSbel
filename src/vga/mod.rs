@@ -1,14 +1,15 @@
 mod colors;
-mod writer;
 mod constants;
+pub mod io_ports;
 mod utils;
+mod writer;
 
 #[macro_use]
 mod macros;
 
-pub use colors::*;
 pub use colors::Color4b::*;
-pub use writer::*;
+pub use colors::*;
 pub use constants::*;
-pub use utils::*;
 pub use macros::*;
+pub use utils::*;
+pub use writer::*;
