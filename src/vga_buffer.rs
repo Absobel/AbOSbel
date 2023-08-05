@@ -1,5 +1,44 @@
-use core::fmt;
+use core::fmt::{self, Write};
+
+use lazy_static::lazy_static;
+use spin::Mutex;
 use volatile::Volatile;
+
+use crate::*;
+use Color4b::*;
+
+// CONSTS
+
+pub const VGA_BUFFER: *mut u8 = 0xb8000 as *mut u8;
+
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new(
+        ColorCode::new(Black, Color3b::LightGray, false),
+        unsafe { &mut *(VGA_BUFFER as *mut Buffer) }
+    ));
+}
+
+// MACROS
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! WRITER {
+    () => {
+        $crate::vga_buffer::WRITER.lock()
+    };
+}
+
+// ENUMS
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -36,6 +75,8 @@ pub enum Color4b {
     Yellow = 14,
     White = 15,
 }
+
+// STRUCTS
 
 #[derive(Debug, Clone, Copy)]
 pub struct ColorCode {
@@ -211,3 +252,15 @@ impl fmt::Write for Writer {
         Ok(())
     }
 }
+
+// HELPER FUNCTIONS
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    WRITER!().write_fmt(args).unwrap();
+}
+
+// TESTS
+
+#[cfg(test)]
+mod tests {}
