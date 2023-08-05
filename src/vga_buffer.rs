@@ -31,17 +31,10 @@ macro_rules! println {
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
 
-#[macro_export]
-macro_rules! WRITER {
-    () => {
-        $crate::vga_buffer::WRITER.lock()
-    };
-}
-
 // ENUMS
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Color3b {
     Black = 0,
@@ -55,7 +48,7 @@ pub enum Color3b {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Color4b {
     Black = 0,
@@ -78,7 +71,7 @@ pub enum Color4b {
 
 // STRUCTS
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ColorCode {
     foreground_color: Color4b,
     background_color: Color3b,
@@ -107,7 +100,7 @@ impl ColorCode {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 struct ColorCode8b(u8);
 
@@ -121,7 +114,7 @@ impl From<ColorCode> for ColorCode8b {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub struct ScreenChar {
     ascii_character: u8,
@@ -174,6 +167,11 @@ impl Writer {
     fn write_free(&mut self, row: usize, col: usize, byte: u8) {
         self.buffer
             .write(row, col, ScreenChar::new(byte, self.color_code));
+    }
+
+    #[allow(dead_code)]
+    fn read_free(&self, row: usize, col: usize) -> ScreenChar {
+        self.buffer.read(row, col)
     }
 
     fn write_byte(&mut self, byte: u8) {
@@ -244,6 +242,13 @@ impl Writer {
     pub fn change_column_position(&mut self, column_position: usize) {
         self.column_position = column_position;
     }
+
+    #[cfg(test)]
+    fn new_default() -> Self {
+        Writer::new(ColorCode::new(Black, Color3b::LightGray, false), unsafe {
+            &mut *(VGA_BUFFER as *mut Buffer)
+        })
+    }
 }
 
 impl fmt::Write for Writer {
@@ -257,10 +262,119 @@ impl fmt::Write for Writer {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    WRITER!().write_fmt(args).unwrap();
+    WRITER.lock().write_fmt(args).unwrap();
 }
 
 // TESTS
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
 
-#[cfg(test)]
-mod tests {}
+    #[test_case]
+    fn no_panic_print() {
+        println!("test_println_simple output");
+    }
+
+    #[test_case]
+    fn no_panic_overflow_print() {
+        for _ in 0..200 {
+            println!("test_println_overflow output");
+        }
+    }
+
+    #[test_case]
+    fn writer_println_output() {
+        let mut writer = Writer::new_default();
+        writer.clear();
+        let s = "Some test string that fits on a single line";
+        println!("{}", s);
+        for (i, c) in s.chars().enumerate() {
+            let screen_char = writer.read_free(BUFFER_HEIGHT - 2, i);
+            assert_eq!(char::from(screen_char.ascii_character), c);
+        }
+    }
+
+    #[test_case]
+    fn writer_write_free() {
+        let mut writer = Writer::new_default();
+        writer.write_free(12, 54, b'X');
+        assert_eq!(writer.read_free(12, 54).ascii_character, b'X');
+    }
+
+    #[test_case]
+    fn writer_read_free_1() {
+        let mut writer = Writer::new_default();
+        writer.write_free(12, 54, b'X');
+        assert_eq!(writer.read_free(12, 54).ascii_character, b'X');
+    }
+
+    #[test_case]
+    fn writer_read_free_2() {
+        let mut writer = Writer::new_default();
+        writer.write_free(12, 54, b'X');
+        assert_eq!(writer.read_free(12, 54), writer.buffer.read(12, 54));
+    }
+
+    #[test_case]
+    fn writer_change_foreground_color() {
+        let mut writer = Writer::new_default();
+        writer.change_foreground_color(Color4b::LightBlue);
+        writer.write_byte(b'X');
+        assert_eq!(
+            writer.read_free(BUFFER_HEIGHT - 1, 0).color_code.0,
+            ColorCode8b::from(ColorCode::new(
+                Color4b::LightBlue,
+                Color3b::LightGray,
+                false
+            ))
+            .0
+        );
+    }
+
+    #[test_case]
+    fn writer_change_background_color() {
+        let mut writer = Writer::new_default();
+        writer.change_background_color(Color3b::Blue);
+        writer.change_column_position(0);
+        writer.write_byte(b'X');
+        assert_eq!(
+            writer.read_free(BUFFER_HEIGHT - 1, 0).color_code.0,
+            ColorCode8b::from(ColorCode::new(Color4b::Black, Color3b::Blue, false)).0
+        );
+    }
+
+    #[test_case]
+    fn writer_change_blink() {
+        let mut writer = Writer::new_default();
+        writer.change_blink(true);
+        writer.change_column_position(0);
+        writer.write_byte(b'X');
+        assert_eq!(
+            writer.read_free(BUFFER_HEIGHT - 1, 0).color_code.0,
+            ColorCode8b::from(ColorCode::new(Color4b::Black, Color3b::LightGray, true)).0
+        );
+    }
+
+    #[test_case]
+    fn writer_change_column_position() {
+        let mut writer = Writer::new_default();
+        writer.change_column_position(10);
+        writer.write_byte(b'X');
+        assert_eq!(
+            writer.read_free(BUFFER_HEIGHT - 1, 10).ascii_character,
+            b'X'
+        );
+    }
+
+    #[test_case]
+    fn writer_clear() {
+        let mut writer = Writer::new_default();
+        writer.write_free(12, 54, b'X');
+        writer.clear();
+        for row in 0..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                assert_eq!(writer.read_free(row, col).ascii_character, b' ');
+            }
+        }
+    }
+}
