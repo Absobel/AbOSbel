@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::vga::{Color3b, Color4b::*, ColorCode, Writer, Buffer};
+use crate::vga::{Buffer, Color3b, Color4b::*, ColorCode, Writer};
 
 pub const VGA_BUFFER: *mut u8 = 0xb8000 as *mut u8;
 
@@ -11,5 +11,3 @@ lazy_static! {
         unsafe { &mut *(VGA_BUFFER as *mut Buffer) }
     ));
 }
-
-
