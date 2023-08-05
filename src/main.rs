@@ -39,12 +39,3 @@ pub extern "C" fn _start() -> ! {
     #[allow(clippy::empty_loop)]
     loop {}
 }
-
-// TESTS
-
-#[cfg(test)]
-#[test_case]
-#[should_panic]
-fn should_fail() {
-    assert_eq!(0, 1);
-}
