@@ -30,11 +30,13 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    ab_os_bel::init();
+
     #[cfg(not(test))]
     main();
 
-    #[cfg(test)]
-    test_main();
+    //#[cfg(test)]
+    //test_main();
 
     #[allow(clippy::empty_loop)]
     loop {}

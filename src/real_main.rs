@@ -5,4 +5,6 @@ use ab_os_bel::vga::WRITER;
 pub fn main() {
     WRITER.lock().clear();
     println!("Hello World{}", "!");
+    x86_64::instructions::interrupts::int3();
+    println!("It did not crash!");
 }
