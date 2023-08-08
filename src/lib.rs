@@ -1,13 +1,23 @@
 // Purpose: Library for integration tests.
 
 #![no_std]
+#![feature(abi_x86_interrupt)]
 #![cfg_attr(test, no_main)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-pub mod serial;
-pub mod vga;
+mod kernel;
+
+pub use kernel::*;
+
+// INIT INTERRUPTS
+
+pub fn init() {
+    interrupts::init_idt();
+}
+
+//// TESTS
 
 // CORE FOR TESTS
 
