@@ -7,6 +7,7 @@ pub fn main() {
     println!("Hello World{}", "!");
 
     // triggering a stack overflow exception
+    #[allow(unconditional_recursion)]
     fn stack_overflow(i: usize) -> usize {
         serial_println!("stack overflow {}", i);
         stack_overflow(i + 1)
