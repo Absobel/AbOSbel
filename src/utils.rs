@@ -2,6 +2,7 @@
 
 pub fn init() {
     crate::interrupts::init_idt();
+    crate::gdt::init();
 }
 
 // QEMU EXIT CODE

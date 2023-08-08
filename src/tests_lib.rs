@@ -17,7 +17,7 @@ pub extern "C" fn _start() -> ! {
 
 use core::panic::PanicInfo;
 
-use crate::{serial_println, exit_qemu, QemuExitCode, serial_print};
+use crate::{exit_qemu, serial_print, serial_println, QemuExitCode};
 
 #[cfg(test)]
 #[panic_handler]

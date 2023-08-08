@@ -30,7 +30,6 @@ pub extern "C" fn _start() -> ! {
     loop {}
 }
 
-
 // TESTS
 
 #[cfg(test)]
