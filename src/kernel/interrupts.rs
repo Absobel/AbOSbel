@@ -18,3 +18,11 @@ pub fn init_idt() {
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
+
+#[cfg(test)]
+mod tests {
+    #[test_case]
+    fn no_panic_breakpoint_exception() {
+        x86_64::instructions::interrupts::int3();
+    }
+}

@@ -41,8 +41,8 @@ impl Writer {
             .write(row, col, ScreenChar::new(byte, self.color_code));
     }
 
-    #[allow(dead_code)]
-    fn read_free(&self, row: usize, col: usize) -> ScreenChar {
+    #[cfg(test)]
+    pub fn read_free(&self, row: usize, col: usize) -> ScreenChar {
         self.buffer.read(row, col)
     }
 
@@ -128,7 +128,6 @@ mod tests {
     #[allow(unused_imports)]
     use {super::*, crate::println, super::Color4b::Black};
 
-    #[cfg(test)]
     fn new_default() -> Writer {
         Writer::new(ColorCode::new(Black, Color3b::LightGray, false), unsafe {
             &mut *(VGA_BUFFER as *mut Buffer)
