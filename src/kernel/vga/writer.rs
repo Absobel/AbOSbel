@@ -1,8 +1,6 @@
 use core::fmt;
 use volatile::Volatile;
 
-use crate::serial_println;
-
 use super::*;
 
 const BUFFER_HEIGHT: usize = 25;
