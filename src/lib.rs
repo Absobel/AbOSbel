@@ -8,9 +8,9 @@
 #![reexport_test_harness_main = "test_main"]
 
 mod kernel;
-mod utils;
 mod tests_lib;
+mod utils;
 
 pub use kernel::*;
-pub use utils::*;
 pub use tests_lib::*;
+pub use utils::*;

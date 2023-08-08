@@ -126,7 +126,7 @@ impl fmt::Write for Writer {
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
-    use {super::*, crate::println, super::Color4b::Black};
+    use {super::Color4b::Black, super::*, crate::println};
 
     fn new_default() -> Writer {
         Writer::new(ColorCode::new(Black, Color3b::LightGray, false), unsafe {
