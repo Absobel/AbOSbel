@@ -114,13 +114,6 @@ impl Writer {
     pub fn change_column_position(&mut self, column_position: usize) {
         self.column_position = column_position;
     }
-
-    #[cfg(test)]
-    fn new_default() -> Self {
-        Writer::new(ColorCode::new(Black, Color3b::LightGray, false), unsafe {
-            &mut *(VGA_BUFFER as *mut Buffer)
-        })
-    }
 }
 
 impl fmt::Write for Writer {
@@ -130,13 +123,21 @@ impl fmt::Write for Writer {
     }
 }
 
+#[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
-    use {super::*, crate::println};
+    use {super::*, crate::println, super::Color4b::Black};
+
+    #[cfg(test)]
+    fn new_default() -> Writer {
+        Writer::new(ColorCode::new(Black, Color3b::LightGray, false), unsafe {
+            &mut *(VGA_BUFFER as *mut Buffer)
+        })
+    }
 
     #[test_case]
     fn writer_println_output() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.clear();
         let s = "Some test string that fits on a single line";
         println!("{}", s);
@@ -148,28 +149,28 @@ mod tests {
 
     #[test_case]
     fn writer_write_free() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.write_free(12, 54, b'X');
         assert_eq!(writer.read_free(12, 54).ascii_character, b'X');
     }
 
     #[test_case]
     fn writer_read_free_1() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.write_free(12, 54, b'X');
         assert_eq!(writer.read_free(12, 54).ascii_character, b'X');
     }
 
     #[test_case]
     fn writer_read_free_2() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.write_free(12, 54, b'X');
         assert_eq!(writer.read_free(12, 54), writer.buffer.read(12, 54));
     }
 
     #[test_case]
     fn writer_change_foreground_color() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.change_foreground_color(Color4b::LightBlue);
         writer.write_byte(b'X');
         assert_eq!(
@@ -185,7 +186,7 @@ mod tests {
 
     #[test_case]
     fn writer_change_background_color() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.change_background_color(Color3b::Blue);
         writer.change_column_position(0);
         writer.write_byte(b'X');
@@ -197,7 +198,7 @@ mod tests {
 
     #[test_case]
     fn writer_change_blink() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.change_blink(true);
         writer.change_column_position(0);
         writer.write_byte(b'X');
@@ -209,7 +210,7 @@ mod tests {
 
     #[test_case]
     fn writer_change_column_position() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.change_column_position(10);
         writer.write_byte(b'X');
         assert_eq!(
@@ -220,7 +221,7 @@ mod tests {
 
     #[test_case]
     fn writer_clear() {
-        let mut writer = Writer::new_default();
+        let mut writer = new_default();
         writer.write_free(12, 54, b'X');
         writer.clear();
         for row in 0..BUFFER_HEIGHT {
