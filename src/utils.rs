@@ -1,8 +1,10 @@
 // INIT INTERRUPTS
 
 pub fn init() {
-    crate::interrupts::init_idt();
-    crate::gdt::init();
+    crate::interrupts::init_idt(); // Initialize the interruptions and the handlers
+    crate::gdt::init(); // Initialize the segmentation for interruption stacks
+    unsafe { crate::interrupts::PICS.lock().initialize() }; // Initialize the PIC8259 for hardware interruptions
+    x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
 }
 
 // QEMU EXIT CODE
