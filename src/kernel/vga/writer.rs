@@ -118,7 +118,7 @@ impl Writer {
         self.color_code.change_foreground_color(foreground_color);
     }
 
-    // TODO : Make it so that the background color can be changed with a Color4b if the blink_bit is unset + unit tests of that
+    // TODO : Make it so that the background color can be changed with a Color4b if the blink is deactivated (vga::io_ports)
     #[allow(dead_code)]
     pub fn change_background_color(&mut self, background_color: Color3b) {
         self.color_code.change_background_color(background_color);

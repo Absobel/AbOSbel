@@ -6,7 +6,7 @@
 
 mod real_main;
 
-use ab_os_bel::println;
+use ab_os_bel::{hlt_loop, println};
 use real_main::main;
 
 use core::panic::PanicInfo;
@@ -17,7 +17,7 @@ use core::panic::PanicInfo;
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
+    hlt_loop()
 }
 
 #[cfg(not(test))]
@@ -25,9 +25,7 @@ fn panic(info: &PanicInfo) -> ! {
 pub extern "C" fn _start() -> ! {
     ab_os_bel::init();
     main();
-
-    #[allow(clippy::empty_loop)]
-    loop {}
+    hlt_loop()
 }
 
 // TESTS
@@ -43,5 +41,5 @@ fn panic(info: &PanicInfo) -> ! {
 pub extern "C" fn _start() {
     ab_os_bel::init();
     test_main();
-    loop {}
+    hlt_loop()
 }
