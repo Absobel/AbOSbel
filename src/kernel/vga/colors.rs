@@ -65,6 +65,10 @@ impl ColorCode {
     pub fn change_blink_to(&mut self, blink: bool) {
         self.blink = blink;
     }
+
+    pub fn blink_bit(&self) -> bool {
+        self.blink
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

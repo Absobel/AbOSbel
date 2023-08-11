@@ -6,6 +6,23 @@ use super::*;
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub struct ScreenChar {
+    pub ascii_character: u8,
+    pub color_code: ColorCode8b,
+}
+
+impl ScreenChar {
+    pub fn new(ascii_character: u8, color_code: ColorCode) -> Self {
+        let color_code_byte = color_code.into();
+        ScreenChar {
+            ascii_character,
+            color_code: color_code_byte,
+        }
+    }
+}
+
 #[repr(transparent)]
 pub struct Buffer {
     chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
@@ -101,6 +118,7 @@ impl Writer {
         self.color_code.change_foreground_color(foreground_color);
     }
 
+    // TODO : Make it so that the background color can be changed with a Color4b if the blink_bit is unset + unit tests of that
     #[allow(dead_code)]
     pub fn change_background_color(&mut self, background_color: Color3b) {
         self.color_code.change_background_color(background_color);
