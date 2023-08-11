@@ -62,7 +62,7 @@ impl ColorCode {
         self.background_color = background_color;
     }
 
-    pub fn change_blink(&mut self, blink: bool) {
+    pub fn change_blink_to(&mut self, blink: bool) {
         self.blink = blink;
     }
 }

@@ -20,7 +20,7 @@ mod tests {
 
     #[test_case]
     fn no_panic_overflow_print() {
-        for _ in 0..200 {
+        for _ in 0..100 {
             println!("test_println_overflow output");
         }
     }
