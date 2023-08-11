@@ -1,4 +1,3 @@
-#[allow(unused_imports)]
 use crate::*;
 
 //// TESTS
@@ -10,14 +9,13 @@ use crate::*;
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
-    loop {}
+    hlt_loop()
 }
 
 // PANIC FOR TESTS
 
 use core::panic::PanicInfo;
 
-use crate::{exit_qemu, serial_print, serial_println, QemuExitCode};
 
 #[cfg(test)]
 #[panic_handler]
@@ -30,8 +28,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
 
-    #[allow(clippy::empty_loop)]
-    loop {}
+    hlt_loop()
 }
 
 // TESTS

@@ -2,6 +2,7 @@ mod colors;
 mod constants;
 mod utils;
 mod writer;
+mod io_ports;
 
 #[macro_use]
 mod macros;
