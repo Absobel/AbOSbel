@@ -4,12 +4,19 @@
 #![test_runner(ab_os_bel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+
+// BOOTSTRAP
+
+global_asm!(include_str!("preliminary/multiboot.s"), options(raw));
+global_asm!(include_str!("preliminary/boot.s"), options(raw));
+
+// ACTUAL START
+
 mod real_main;
 
 use ab_os_bel::{hlt_loop, println};
-use real_main::main;
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, arch::global_asm};
 
 // MAIN
 
@@ -22,9 +29,9 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cfg(not(test))]
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn main() -> ! {
     ab_os_bel::init();
-    main();
+    real_main::main();
     hlt_loop()
 }
 
@@ -38,7 +45,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cfg(test)]
 #[no_mangle]
-pub extern "C" fn _start() {
+pub extern "C" fn main() {
     ab_os_bel::init();
     test_main();
     hlt_loop()
