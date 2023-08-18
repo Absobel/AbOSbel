@@ -8,3 +8,6 @@ target = "x86_64-abosbel-none.json"
 # rustflags = [
 #     "-C", "link-arg=-Tlinker.ld",
 # ]
+
+[target.'cfg(target_os = "none")']
+runner = "./start.sh"
