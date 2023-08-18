@@ -10,7 +10,7 @@ use core::panic::PanicInfo;
 // CORE
 
 #[no_mangle] // don't mangle the name of this function
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn main() -> ! {
     serial_print!("should_panic::should_fail...\t");
     should_fail();
     serial_println!("[test did not panic");

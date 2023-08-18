@@ -12,7 +12,7 @@ use x86_64::structures::idt::InterruptStackFrame;
 use ab_os_bel::serial_print;
 
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn main() -> ! {
     serial_print!("stack_overflow::stack_overflow...\t");
 
     ab_os_bel::gdt::init();
