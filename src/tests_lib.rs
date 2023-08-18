@@ -6,7 +6,7 @@ use crate::*;
 
 #[cfg(test)]
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn main() -> ! {
     init();
     test_main();
     hlt_loop()
