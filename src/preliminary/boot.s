@@ -11,15 +11,20 @@
  * This is the entry point of the kernel.
 */
 _start:
-    mov esp, stack_top
+    lea esp, [stack_top]
 
     call check_multiboot
-    jmp error
     call check_cpuid
     call check_long_mode
 
     call set_up_page_tables
     call enable_paging 
+
+    /* load the 64-bit GDT */
+    lgdt [gdt64pointer]
+
+    mov dword ptr [0xb8000], 0x2f4b2f4f
+    hlt
 
     call main
 
@@ -120,12 +125,12 @@ error:
 */
 set_up_page_tables:
     /* map first P4 entry to P3 table */
-    mov eax, p3_table
+    lea eax, [p3_table]
     or eax, 0b11 /* present + writable */
     mov [p4_table], eax
 
     /* map first P3 entry to P2 table */
-    mov eax, p2_table
+    lea eax, [p2_table]
     or eax, 0b11 /* present + writable */
     mov [p3_table], eax
 
@@ -150,7 +155,7 @@ set_up_page_tables:
 */
 enable_paging:
     /* load P4 to cr3 register (cpu uses this to access the P4 table) */
-    mov eax, p4_table
+    lea eax, [p4_table]
     mov cr3, eax
 
     /* enable PAE-flag in cr4 (Physical Address Extension) */
@@ -172,6 +177,14 @@ enable_paging:
     ret
 
 
+
+
+
+
+
+
+
+
 /* BSS : section where uninitialised data is stored */
 
 .section .bss
@@ -187,5 +200,22 @@ p2_table:
 
 /* allocate stack */
 stack_bottom:
-    .space 64
+    .space 4096
 stack_top:
+
+
+
+
+
+
+
+/* RODATA : section where read-only data is stored */
+.section .rodata
+
+/* GDT : Global Descriptor Table */
+gdt64:
+    .quad 0 /* zero entry */
+    .quad (1<<43) | (1<<44) | (1<<47) | (1<<53) /* code segment */
+gdt64pointer:
+    .word . - gdt64 - 1
+    .quad gdt64
