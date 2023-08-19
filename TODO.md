@@ -1,5 +1,6 @@
-[ ] - make it boot with grub
-[ ] - make the test environnement work with grub
+[x] - make it boot with grub
+[ ] - return to the previous state (no matter the state of tests)
+[ ] - make the test environnement work again
 [ ] - restructure the project
 [ ] - continue the tutorial
 [ ] - github actions ??

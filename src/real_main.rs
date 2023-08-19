@@ -7,8 +7,8 @@ pub fn main() {
     WRITER.lock().clear();
     println!("Hello World{}", "!");
 
-    let (level_4_page_table, _) = Cr3::read();
-    println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
+    //let (level_4_page_table, _) = Cr3::read();
+    //println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
 
     println!("It did not crash!");
 }
