@@ -5,6 +5,8 @@
 
 .section .text
 .global _start
+.extern long_mode_start
+
 .code32
 
 /**
@@ -21,13 +23,10 @@ _start:
     call enable_paging 
 
     /* load the 64-bit GDT */
-    lgdt [gdt64pointer]
+    lgdt [gdt64_pointer]
 
-    mov dword ptr [0xb8000], 0x2f4b2f4f
-    hlt
-
-    call main
-
+    ljmp 0x8, offset long_mode_start /* TODO should not be hardcoded but should be set to GDT64_CODE but doesn't work so... */
+    
     /* Shouldn't ever reach here */
     cli
     hlt
@@ -180,6 +179,30 @@ enable_paging:
 
 
 
+/* LONG MODE */
+
+.code64
+.extern main
+
+/**
+ * This is the entry point of the kernel in long mode.
+*/
+long_mode_start:
+    /* reinit all the segment registers */
+    mov ax, 0
+    mov ss, ax
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    call main
+
+    /* Shouldn't ever reach here */
+    cli
+    hlt
+
+
 
 
 
@@ -215,7 +238,8 @@ stack_top:
 /* GDT : Global Descriptor Table */
 gdt64:
     .quad 0 /* zero entry */
+    .set GDT64_CODE, . - gdt64
     .quad (1<<43) | (1<<44) | (1<<47) | (1<<53) /* code segment */
-gdt64pointer:
+gdt64_pointer:
     .word . - gdt64 - 1
     .quad gdt64

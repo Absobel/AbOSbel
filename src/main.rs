@@ -29,8 +29,9 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[cfg(not(test))]
 #[no_mangle]
-pub extern "C" fn main() -> ! {
+pub extern "C" fn main() -> ! {   
     ab_os_bel::init();
+    // TODO : stop boot loop when calling hlt_loop after init
     real_main::main();
     hlt_loop()
 }
