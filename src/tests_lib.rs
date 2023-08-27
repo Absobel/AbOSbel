@@ -16,7 +16,6 @@ pub extern "C" fn main() -> ! {
 
 use core::panic::PanicInfo;
 
-
 #[cfg(test)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
