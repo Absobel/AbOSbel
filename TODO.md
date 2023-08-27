@@ -1,5 +1,5 @@
 [x] - make it boot with grub
-[ ] - return to the previous state (no matter the state of tests)
+[x] - return to the previous state (no matter the state of tests)
 [ ] - make the test environnement work again
 [ ] - restructure the project
 [ ] - continue the tutorial

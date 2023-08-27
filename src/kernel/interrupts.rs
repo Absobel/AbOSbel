@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, print, println};
+use crate::{gdt, print, println, serial_println};
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
@@ -27,6 +27,7 @@ lazy_static! {
 }
 
 pub fn init_idt() {
+    serial_println!("Initializing IDT...");
     IDT.load();
 }
 
@@ -43,15 +44,6 @@ extern "x86-interrupt" fn double_fault_handler(
     panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
 }
 
-extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    print!(".");
-
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
-}
-
 extern "x86-interrupt" fn page_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: PageFaultErrorCode,
@@ -65,9 +57,18 @@ extern "x86-interrupt" fn page_fault_handler(
     crate::hlt_loop();
 }
 
-extern "x86-interrupt" fn keyboard_interrupt_handler(
-    _stack_frame: InterruptStackFrame)
-{
+// HARDWARE IDT HANDLERS
+
+extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    // TODO
+
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    }
+}
+
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     // TODO : Implement that myself but it shouldn't be necessary as in a later post it will be changed
 
     use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
@@ -75,10 +76,9 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     use x86_64::instructions::port::Port;
 
     lazy_static! {
-        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
-            Mutex::new(Keyboard::new(layouts::Us104Key, ScancodeSet1,
-                HandleControl::Ignore)
-            );
+        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> = Mutex::new(
+            Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore)
+        );
     }
 
     let mut keyboard = KEYBOARD.lock();
@@ -99,9 +99,6 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }
 }
-
-
-
 
 // PIC8259
 use pic8259::ChainedPics;
@@ -133,10 +130,6 @@ impl InterruptIndex {
     }
 }
 
-
-
-
-
 // TESTS
 
 #[cfg(test)]
@@ -146,5 +139,3 @@ mod tests {
         x86_64::instructions::interrupts::int3();
     }
 }
-
-

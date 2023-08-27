@@ -1,8 +1,8 @@
 mod colors;
 mod constants;
+mod io_ports;
 mod utils;
 mod writer;
-mod io_ports;
 
 #[macro_use]
 mod macros;

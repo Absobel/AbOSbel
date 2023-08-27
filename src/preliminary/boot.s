@@ -14,6 +14,9 @@
 */
 _start:
     lea esp, [stack_top]
+    /* give grub memory map as arg to main */
+    mov esi, eax
+    mov edi, ebx
 
     call check_multiboot
     call check_cpuid
@@ -223,7 +226,7 @@ p2_table:
 
 /* allocate stack */
 stack_bottom:
-    .space 4096
+    .space 4096*4
 stack_top:
 
 
