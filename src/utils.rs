@@ -1,13 +1,9 @@
-// INIT INTERRUPTS
-
-pub fn init() {    
+pub fn init() {
     crate::interrupts::init_idt(); // Initialize the interruptions and the handlers
-    
+
     crate::gdt::init(); // Initialize the segmentation for interruption stacks
     unsafe { crate::interrupts::PICS.lock().initialize() }; // Initialize the PIC8259 for hardware interruption
-    
-    // FIXME
-    
+
     x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
 }
 

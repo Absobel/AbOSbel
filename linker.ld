@@ -33,7 +33,7 @@ SECTIONS
 		*(.data)
         *(.data.*)
 	}
- 
+	
 	/* Read-write data (uninitialized) and stack */
 	.bss ALIGN(4K) :
 	{
