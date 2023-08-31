@@ -20,11 +20,11 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 #[no_mangle]
-pub extern "C" fn main(multiboot_info_addr: usize) -> ! {
+pub extern "C" fn main(_multiboot_info_addr: usize) -> ! {
     ab_os_bel::init();
 
     #[cfg(not(test))]
-    real_main::main(multiboot_info_addr);
+    real_main::main(_multiboot_info_addr);
     
     #[cfg(test)]
     test_main();
