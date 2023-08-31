@@ -1,18 +1,19 @@
+use ab_os_bel::{vga::WRITER, memory::{self, FrameAllocator}};
+
 use crate::println;
-use x86_64::registers::control::Cr3;
 
 #[allow(dead_code)]
-pub fn main() {
-    //WRITER.lock().clear();
+pub fn main(multiboot_info_addr: usize) {
+    WRITER.lock().clear();
     println!("Hello World{}", "!");
 
-    //x86_64::instructions::interrupts::int3();
-
-    let (level_4_page_table, _) = Cr3::read();
-    println!(
-        "Level 4 page table at: {:?}",
-        level_4_page_table.start_address()
-    );
+    // let mut frame_allocator = memory::frame_allocator(multiboot_info_addr);
+    // for i in 0.. {
+    //     if frame_allocator.allocate_frame().is_none() {
+    //         println!("Allocated {} frames", i);
+    //         break;
+    //     }
+    // }
 
     println!("It did not crash!");
 }

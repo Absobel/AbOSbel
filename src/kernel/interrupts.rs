@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, print, println, serial_println};
+use crate::{gdt, print, println};
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
@@ -27,7 +27,6 @@ lazy_static! {
 }
 
 pub fn init_idt() {
-    serial_println!("Initializing IDT...");
     IDT.load();
 }
 
@@ -60,7 +59,7 @@ extern "x86-interrupt" fn page_fault_handler(
 // HARDWARE IDT HANDLERS
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    // TODO
+    // TODO : Do smth here ig
 
     unsafe {
         PICS.lock()

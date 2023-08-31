@@ -6,7 +6,7 @@ use crate::*;
 
 #[cfg(test)]
 #[no_mangle]
-pub extern "C" fn main() -> ! {
+pub extern "C" fn main(_multiboot_info_addr: usize) -> ! {  
     init();
     test_main();
     hlt_loop()
@@ -30,7 +30,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     hlt_loop()
 }
 
-// TESTS
+// TEST RUNNER
 
 pub trait Testable {
     fn run(&self);
