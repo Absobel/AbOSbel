@@ -8,7 +8,7 @@
 
 // CORE
 
-#[no_mangle] // don't mangle the name of this function
+#[no_mangle]
 pub extern "C" fn main() -> ! {
     test_main();
 

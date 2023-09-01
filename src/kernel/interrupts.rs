@@ -49,12 +49,14 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("{:#?}", stack_frame);
-    crate::hlt_loop();
+    panic!(
+        "EXCEPTION: PAGE FAULT\nAccessed Address: {:?}\nError Code: {:?}\nStack Frame: {:#?}",
+        Cr2::read(),
+        error_code,
+        stack_frame
+    );
 }
+
 
 // HARDWARE IDT HANDLERS
 

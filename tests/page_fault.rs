@@ -1,6 +1,3 @@
-// Purpose: Template for integration test that should panic.
-// Current limitations: The test runner does not yet support multiple tests that panic.
-
 #![no_std]
 #![no_main]
 
@@ -9,17 +6,19 @@ use core::panic::PanicInfo;
 
 // CORE
 
-#[no_mangle] // don't mangle the name of this function
+#[no_mangle]
 pub extern "C" fn main() -> ! {
     serial_print!("should_panic::should_fail...\t");
     should_fail();
-    serial_println!("[test did not panic");
+    serial_println!("[test did not panic]");
     ab_os_bel::hlt_loop()
 }
 
 fn should_fail() {
-    serial_print!("should_panic::should_fail... ");
-    assert_eq!(0, 1);
+    serial_print!("page_fault::should_fail... ");
+    ab_os_bel::init();
+    let ptr = 0xdeadbeaf as *mut u32;
+    unsafe { *ptr = 42; }
 }
 
 #[panic_handler]

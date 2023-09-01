@@ -53,6 +53,14 @@ impl Writer {
         }
     }
 
+    // TODO: Define the default state somewhere instead of this shit
+    pub fn return_to_default(&mut self) {
+        self.change_background_color(Color3b::LightGray);
+        self.change_blink_to(false);
+        self.clear();
+        self.change_foreground_color(Color4b::Black);
+    }
+
     fn write_free(&mut self, row: usize, col: usize, byte: u8) {
         self.buffer
             .write(row, col, ScreenChar::new(byte, self.color_code));
@@ -147,19 +155,11 @@ mod tests {
     #[allow(unused_imports)]
     use {super::Color4b::Black, super::*, crate::println};
 
-    fn return_to_default() {
-        let mut writer = WRITER.lock();
-        writer.change_foreground_color(Black);
-        writer.change_background_color(Color3b::LightGray);
-        writer.change_blink_to(false);
-        writer.clear();
-    }
-
     #[test_case]
     fn writer_println_output() {
         let s = "Some test string that fits on a single line";
         x86_64::instructions::interrupts::without_interrupts(|| {
-            return_to_default();
+            WRITER.lock().return_to_default();
 
             println!("{}", s);
 
@@ -202,7 +202,7 @@ mod tests {
     #[test_case]
     fn writer_change_foreground_color() {
         x86_64::instructions::interrupts::without_interrupts(|| {
-            return_to_default();
+            WRITER.lock().return_to_default();
 
             let mut writer = WRITER.lock();
             writer.change_foreground_color(Color4b::LightBlue);
@@ -223,7 +223,7 @@ mod tests {
     #[test_case]
     fn writer_change_background_color() {
         x86_64::instructions::interrupts::without_interrupts(|| {
-            return_to_default();
+            WRITER.lock().return_to_default();
 
             let mut writer = WRITER.lock();
             writer.change_background_color(Color3b::Blue);
@@ -239,7 +239,7 @@ mod tests {
     #[test_case]
     fn writer_change_blink_to() {
         x86_64::instructions::interrupts::without_interrupts(|| {
-            return_to_default();
+            WRITER.lock().return_to_default();
 
             let mut writer = WRITER.lock();
             writer.change_blink_to(true);
