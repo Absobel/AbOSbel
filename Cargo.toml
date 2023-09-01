@@ -16,9 +16,13 @@ x86_64 = "0.14.10"  # (in seconds)
 # No harness tests
 
 [[test]]
-name = "should_panic"
+name = "should_panic_template"
 harness = false
 
 [[test]]
 name = "stack_overflow"
+harness = false
+
+[[test]]
+name = "page_fault"
 harness = false
