@@ -6,8 +6,8 @@ use crate::*;
 
 #[cfg(test)]
 #[no_mangle]
-pub extern "C" fn main(_multiboot_info_addr: usize) -> ! {  
-    init();
+pub extern "C" fn main(multiboot_info_addr: usize) -> ! {
+    init(multiboot_info_addr);
     test_main();
     hlt_loop()
 }
