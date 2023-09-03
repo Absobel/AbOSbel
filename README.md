@@ -13,10 +13,10 @@ Then you just need to clone the repo and either run it (with `cargo run`) to lau
 
 If you prefer to use Docker for building and testing the project, for example if you don't use linux, you can do so. You first have to install docker if you don't have it ([Docker's official website](https://www.docker.com/products/docker-desktop)).
 
-Then you can build the docker image and run it with the following command:
+Then you can build the docker image and run it with the following command (or do whatever you want, idk) :
 
 ```bash
 docker build -t ab_os_bel . && docker run -it --rm ab_os_bel
 ```
 
-You will be in a shell inside the docker container and you can run the commands described above. If you want to have a graphical environnement then set it up yourself because I couldn't :)
+You will be in a shell inside the docker container and you can run the commands described above. If you want to have a graphical environnement then set it up yourself because it's plateform dependant.
