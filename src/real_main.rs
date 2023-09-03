@@ -1,19 +1,48 @@
-use ab_os_bel::{vga::WRITER, memory::{self, FrameAllocator}};
+use ab_os_bel::{
+    memory::{self, FrameAllocator},
+    vga::WRITER,
+};
 
 use crate::println;
 
 #[allow(dead_code)]
-pub fn main(multiboot_info_addr: usize) {
+pub fn main() {
     WRITER.lock().clear();
-    println!("Hello World{}", "!");
 
-    let mut frame_allocator = memory::frame_allocator(multiboot_info_addr);
+    println!(
+        "Total memory: {:.2} MiB",
+        memory::total_mem().unwrap() as f64 / (1024.0 * 1024.0)
+    );
+
+    println!("Areas :");
+    for area in unsafe {
+        memory::MULTIBOOT2_INFO
+            .as_ref()
+            .unwrap()
+            .memory_map_tag()
+            .unwrap()
+            .memory_areas()
+            .iter()
+            .filter(|area| area.typ() == multiboot2::MemoryAreaType::Available)
+    } {
+        println!(
+            "    Start: 0x{:x}, Length: {:.2} MiB",
+            area.start_address(),
+            area.size() as f64 / (1024.0 * 1024.0)
+        );
+    }
+
+    let mut frame_allocator = memory::frame_allocator().unwrap();
     for i in 0.. {
         if frame_allocator.allocate_frame().is_none() {
             println!("Allocated {} frames", i);
+            println!(
+                "Or {:.2} MiB",
+                (i * memory::PAGE_SIZE) as f64 / (1024.0 * 1024.0)
+            );
             break;
         }
     }
 
-    println!("It did not crash!");
+    println!("\nEnd of program.");
 }

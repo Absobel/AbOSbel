@@ -1,10 +1,12 @@
-pub fn init() {
+pub fn init(multiboot_info_addr: usize) {
     crate::interrupts::init_idt(); // Initialize the interruptions and the handlers
 
     crate::gdt::init(); // Initialize the segmentation for interruption stacks
     unsafe { crate::interrupts::PICS.lock().initialize() }; // Initialize the PIC8259 for hardware interruption
 
     x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
+
+    unsafe { crate::memory::load_multiboot(multiboot_info_addr) }; // Load the multiboot information
 }
 
 // QEMU EXIT CODE

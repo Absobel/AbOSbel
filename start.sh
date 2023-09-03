@@ -17,7 +17,7 @@ else
 fi
 
 qemu-system-x86_64 \
-  -m "100M" \
+  -m "500M" \
   -cdrom target/ab-os-bel.iso \
   -serial stdio \
   -no-reboot \

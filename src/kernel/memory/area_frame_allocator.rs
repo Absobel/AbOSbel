@@ -1,4 +1,4 @@
-use multiboot2::MemoryArea;
+use multiboot2::{MemoryArea, MemoryAreaType};
 
 use super::{Frame, FrameAllocator};
 
@@ -78,6 +78,7 @@ impl<'a> AreaFrameAllocator<'a> {
         allocator
     }
 
+    // TODO: CHECK IF MEMORY AREA TYPE == AVAILABLE
     fn choose_next_area(&mut self) {
         self.current_area = self
             .areas
@@ -85,6 +86,7 @@ impl<'a> AreaFrameAllocator<'a> {
             .filter(|area| {
                 let address = area.end_address() - 1;
                 Frame::containing_address(address as usize) >= self.next_free_frame
+                    && area.typ() == MemoryAreaType::Available
             })
             .min_by_key(|area| area.start_address());
 

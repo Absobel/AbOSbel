@@ -2,7 +2,31 @@ use multiboot2::{BootInformation, BootInformationHeader};
 
 pub const PAGE_SIZE: usize = 4096;
 
-static mut MULTIBOOT2_INFO: Option<BootInformation> = None;
+pub static mut MULTIBOOT2_INFO: Option<BootInformation> = None;
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe fn load_multiboot(multiboot_info_addr: usize) {
+    if MULTIBOOT2_INFO.is_none() {
+        MULTIBOOT2_INFO =
+            BootInformation::load(multiboot_info_addr as *const BootInformationHeader).ok();
+    }
+}
+
+pub fn total_mem() -> Result<usize, &'static str> {
+    let maybe_boot_info = unsafe { MULTIBOOT2_INFO.as_ref() };
+
+    match maybe_boot_info {
+        Some(boot_info) => Ok(boot_info
+            .memory_map_tag()
+            .unwrap()
+            .memory_areas()
+            .iter()
+            .filter(|area| area.typ() == multiboot2::MemoryAreaType::Available)
+            .map(|area| area.size() as usize)
+            .sum()),
+        None => Err("Boot information not loaded"),
+    }
+}
 
 pub trait FrameAllocator {
     fn allocate_frame(&mut self) -> Option<Frame>;
@@ -22,12 +46,8 @@ impl Frame {
     }
 }
 
-pub fn frame_allocator(multiboot_info_addr: usize) -> impl FrameAllocator {
-    unsafe {
-        MULTIBOOT2_INFO = BootInformation::load(multiboot_info_addr as *const BootInformationHeader).ok();
-    };
-
-    let boot_info = unsafe { MULTIBOOT2_INFO.as_ref().unwrap() };
+pub fn frame_allocator() -> Result<impl FrameAllocator, &'static str> {
+    let boot_info = unsafe { MULTIBOOT2_INFO.as_ref() }.ok_or("Boot information not loaded")?;
 
     let memory_map_tag = boot_info.memory_map_tag().unwrap();
 
@@ -40,14 +60,14 @@ pub fn frame_allocator(multiboot_info_addr: usize) -> impl FrameAllocator {
         .start_address();
     let kernel_end = elf_sections.map(|s| s.end_address()).max().unwrap();
 
-    let multiboot_start = multiboot_info_addr;
+    let multiboot_start = boot_info.start_address();
     let multiboot_end = multiboot_start + boot_info.total_size();
 
-    super::AreaFrameAllocator::new(
+    Ok(super::AreaFrameAllocator::new(
         kernel_start as usize,
         kernel_end as usize,
         multiboot_start,
         multiboot_end,
         memory_map_tag.memory_areas(),
-    )
+    ))
 }

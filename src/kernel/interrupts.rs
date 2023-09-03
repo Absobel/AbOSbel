@@ -57,7 +57,6 @@ extern "x86-interrupt" fn page_fault_handler(
     );
 }
 
-
 // HARDWARE IDT HANDLERS
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
