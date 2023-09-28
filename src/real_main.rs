@@ -1,6 +1,8 @@
+use core::arch::asm;
+
 use ab_os_bel::{
     memory::{self, FrameAllocator},
-    vga::WRITER,
+    vga::WRITER, dbg, serial_dbg,
 };
 
 use crate::println;
@@ -43,6 +45,20 @@ pub fn main() {
             break;
         }
     }
+
+    serial_dbg!(unsafe {
+        memory::MULTIBOOT2_INFO
+            .as_ref()
+            .expect("Multiboot info required")
+            .framebuffer_tag()
+    });
+
+    serial_dbg!(unsafe {
+        memory::MULTIBOOT2_INFO
+            .as_ref()
+            .expect("Multiboot info required")
+            .vbe_info_tag()
+    });
 
     println!("\nEnd of program.");
 }
