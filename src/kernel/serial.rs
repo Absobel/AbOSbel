@@ -41,3 +41,22 @@ macro_rules! serial_println {
     ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
         concat!($fmt, "\n"), $($arg)*));
 }
+
+#[macro_export]
+macro_rules! serial_dbg {
+    () => {
+        $crate::serial_println!("[{}:{}]", $crate::file!(), $crate::line!())
+    };
+    ($val:expr $(,)?) => {
+        match $val {
+            tmp => {
+                $crate::serial_println!("[{}:{}] {} = {:#?}",
+                    file!(), line!(), stringify!($val), &tmp);
+                tmp
+            }
+        }
+    };
+    ($($val:expr),+ $(,)?) => {
+        ($($crate::serial_dbg!($val)),+,)
+    };
+}
