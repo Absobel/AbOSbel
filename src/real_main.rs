@@ -1,8 +1,6 @@
-use core::arch::asm;
-
 use ab_os_bel::{
     memory::{self, FrameAllocator},
-    vga::WRITER, dbg, serial_dbg,
+    vga::WRITER, serial_dbg,
 };
 
 use crate::println;
@@ -57,7 +55,7 @@ pub fn main() {
         memory::MULTIBOOT2_INFO
             .as_ref()
             .expect("Multiboot info required")
-            .vbe_info_tag()
+            .efi_memory_map_tag()
     });
 
     println!("\nEnd of program.");
