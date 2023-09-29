@@ -4,18 +4,18 @@
 .SET CHECKSUM, -(MAGIC + ARCH_I386 + HEADER_LENGTH)
 
 /* TAGS */
-.SET TAG_FLAG_OPTIONAL, 0
-.SET TAG_FLAG_REQUIRED, 1
+.SET TAG_FLAG_OPTIONAL, 1
+.SET TAG_FLAG_REQUIRED, 0
 
 /* HEADER TAGS TYPES */
-.SET ENDING_TAG_TYPE, 0
-.SET INFORMATION_REQUEST_TAG_TYPE, 1
-    .SET INFORMATION_REQUEST_TAG_SIZE, info_request_tag_end - info_request_tag_start
-    
-/* MBI TAGS TYPES */
-.SET VBE_INFO_TAG_TYPE, 7
-.SET FRAMEBUFFER_INFO_TAG_TYPE, 8
+.SET HEADER_ENDING_TAG_TYPE, 0
+.SET HEADER_INFORMATION_REQUEST_TAG_TYPE, 1
+    .SET HEADER_INFORMATION_REQUEST_TAG_SIZE, info_request_tag_end - info_request_tag_start
 
+/* MBI TAGS TYPES */
+.SET MBI_FRAMEBUFFER_INFO_TAG_TYPE, 8
+.SET MBI_EFI_SYSTEM_TABLE_TAG_TYPE, 12
+.SET MBI_EFI_MEMORY_MAP_TAG_TYPE, 17
 
 
 .section .multiboot
@@ -29,16 +29,16 @@ header_start:
     /* multiboot tags go here */
     /* Information request tag */
     info_request_tag_start:
-        .short INFORMATION_REQUEST_TAG_TYPE
+        .short HEADER_INFORMATION_REQUEST_TAG_TYPE
         .short TAG_FLAG_REQUIRED
-        .long INFORMATION_REQUEST_TAG_SIZE
+        .long HEADER_INFORMATION_REQUEST_TAG_SIZE
         /* mbi_tag_types */
-        .long VBE_INFO_TAG_TYPE
-        .long FRAMEBUFFER_INFO_TAG_TYPE
+        .long MBI_EFI_SYSTEM_TABLE_TAG_TYPE
+        .long MBI_EFI_MEMORY_MAP_TAG_TYPE
     info_request_tag_end:
 
     /* end tag */
-    .short ENDING_TAG_TYPE
-    .short TAG_FLAG_OPTIONAL
+    .short HEADER_ENDING_TAG_TYPE
+    .short 0
     .long 8     /* size, including itself (short + short + long) */
 header_end:
