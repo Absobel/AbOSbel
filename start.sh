@@ -10,18 +10,24 @@ else
     exit 1
 fi
 
-# BIOS
-mkdir -p target/iso/boot/grub
-cp grub.cfg target/iso/boot/grub
-rm -f target/iso/boot/ab-os-bel*
-mv ${EXEC_PATH} target/iso/boot/ab-os-bel
+ISO_DIR="target/iso"
 
-# UEFI
-mkdir -p target/iso/EFI/BOOT/
-grub-mkimage -o BOOTX64.EFI -p /EFI/BOOT -O x86_64-efi
-mv BOOTX64.EFI target/iso/EFI/BOOT/
+# Sets up the iso dir
+rm -rf ${ISO_DIR}/
+mkdir -p ${ISO_DIR}/boot/grub
+cp ${EXEC_PATH} ${ISO_DIR}/boot/grub/ab-os-bel
+cp grub.cfg ${ISO_DIR}/boot/grub/grub.cfg
 
-grub-mkrescue -o target/ab-os-bel.iso target/iso -d /usr/lib/grub/i386-pc > /dev/null 2>&1
+mkdir -p ${ISO_DIR}/EFI/BOOT
+# Creates BOOTX64.EFI
+grub-mkstandalone \
+    -O x86_64-efi \
+    --modules="normal multiboot2 boot" \
+    -o ${ISO_DIR}/EFI/BOOT/BOOTX64.EFI \
+    boot/grub/grub.cfg
+
+# Creates the iso
+grub-mkrescue -o target/ab-os-bel.iso ${ISO_DIR}
 
 # Detect if it's not a test by checking if the executable name ends with "ab-os-bel"
 if [[ $EXEC_PATH == *"ab-os-bel" ]]; then
@@ -36,9 +42,9 @@ qemu-system-x86_64 \
   -serial stdio \
   -no-reboot \
   -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
-  # -drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on \
-  # -drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd \
-  # -net none
+  -drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on \
+  -drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd \
+  -net none \
   $EXTRA_QEMU_FLAGS
   #-d int,cpu_reset \
   #-s -S

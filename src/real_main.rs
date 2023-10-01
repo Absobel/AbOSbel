@@ -51,12 +51,18 @@ pub fn main() {
             .framebuffer_tag()
     });
 
-    serial_dbg!(unsafe {
-        memory::MULTIBOOT2_INFO
-            .as_ref()
-            .expect("Multiboot info required")
-            .efi_memory_map_tag()
-    });
+    // serial_dbg!(unsafe {
+    //     memory::MULTIBOOT2_INFO
+    //         .as_ref()
+    //         .expect("Multiboot info required").efi_sdt64_tag();
+    // });
+
+    // serial_dbg!(unsafe {
+    //     memory::MULTIBOOT2_INFO
+    //         .as_ref()
+    //         .expect("Multiboot info required")
+    //         .efi_memory_map_tag()
+    // });
 
     println!("\nEnd of program.");
 }
