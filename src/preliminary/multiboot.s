@@ -11,9 +11,9 @@
 .SET HEADER_ENDING_TAG_TYPE, 0
 .SET HEADER_INFORMATION_REQUEST_TAG_TYPE, 1
     .SET HEADER_INFORMATION_REQUEST_TAG_SIZE, info_request_tag_end - info_request_tag_start
+.SET HEADER_FRAMEBUFFER_TAG_TYPE, 5
 
 /* MBI TAGS TYPES */
-.SET MBI_FRAMEBUFFER_INFO_TAG_TYPE, 8
 .SET MBI_EFI_SYSTEM_TABLE_TAG_TYPE, 12
 .SET MBI_EFI_MEMORY_MAP_TAG_TYPE, 17
 
@@ -25,7 +25,6 @@ header_start:
     .long HEADER_LENGTH
     .long CHECKSUM
 
-
     /* multiboot tags go here */
     /* Information request tag */
     info_request_tag_start:
@@ -36,6 +35,15 @@ header_start:
         .long MBI_EFI_SYSTEM_TABLE_TAG_TYPE
         .long MBI_EFI_MEMORY_MAP_TAG_TYPE
     info_request_tag_end:
+
+    .short HEADER_FRAMEBUFFER_TAG_TYPE
+    .short TAG_FLAG_REQUIRED
+    .long 20
+    .long 0 /* let the bootloader fill this in */
+    .long 0
+    .long 32
+
+    .align 8
 
     /* end tag */
     .short HEADER_ENDING_TAG_TYPE
