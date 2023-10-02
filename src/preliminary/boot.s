@@ -136,19 +136,34 @@ set_up_page_tables:
     or eax, 0b11 /* present + writable */
     mov [p3_table], eax
 
+    /* map second P3 entry to P2 table */
+    lea eax, [p2_table+4096]
+    or eax, 0b11 /* present + writable */
+    mov [p3_table+8], eax
+
+    /* map third P3 entry to P2 table */
+    lea eax, [p2_table+4096*2]
+    or eax, 0b11 /* present + writable */
+    mov [p3_table+16], eax
+
+    /* map fourth P3 entry to P2 table */
+    lea eax, [p2_table+4096*3]
+    or eax, 0b11 /* present + writable */
+    mov [p3_table+24], eax
+
     /* map each P2 entry to a huge 2MiB page */
     mov ecx, 0         /* counter variable */
 
-.map_p2_table:
-    /* map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx */
-    mov eax, 0x200000  /* 2MiB */
-    mul ecx            /* start address of ecx-th page */
-    or eax, 0b10000011 /* present + writable + huge */
-    mov [p2_table + ecx * 8], eax /* map ecx-th entry */
+    .map_p2_table:
+        /* map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx */
+        mov eax, 0x200000  /* 2MiB */
+        mul ecx            /* start address of ecx-th page */
+        or eax, 0b10000011 /* present + writable + huge */
+        mov [p2_table + ecx * 8], eax /* map ecx-th entry */
 
-    inc ecx            /* increase counter */
-    cmp ecx, 512       /* if counter == 512, the whole P2 table is mapped */
-    jne .map_p2_table  /* else map the next entry */
+        inc ecx            /* increase counter */
+        cmp ecx, 512*4       /* if counter == 1024, the whole P2 tables are mapped */
+        jne .map_p2_table  /* else map the next entry */
 
     ret
 
@@ -222,7 +237,7 @@ p4_table:
 p3_table:
     .space 4096
 p2_table:
-    .space 4096
+    .space 4096*4
 
 /* allocate stack */
 stack_bottom:

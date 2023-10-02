@@ -15,7 +15,9 @@ use core::panic::PanicInfo;
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
+    use ab_os_bel::serial_println;
+
+    serial_println!("{}", info);
     hlt_loop()
 }
 
