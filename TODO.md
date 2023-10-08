@@ -3,11 +3,11 @@
 [x] - make the test environnement work again
 [ ] - VGA to UEFI Framebuffer
     [x] - Display smth
-    [ ] - Rewrite println! macro
-    [ ] - Resuse println! macro (serial_println -> println)
-[ ] - restructure the project ?
+    [x] - Rewrite println! macro
+    [x] - Resuse println! macro (serial_println -> println)
+[ ] - Keyboard input ?
 [ ] - continue the tutorial
-[ ] - After allocator, rewrite the graphical part
+[ ] - After allocator, rewrite the graphical part and a lot of other things
     [ ] - rewrite buffer into a vec/smth
 [ ] - Logging
 [ ] - PIC to APIC
