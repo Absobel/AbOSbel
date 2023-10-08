@@ -1,6 +1,7 @@
 use ab_os_bel::{
+    dbg,
     framebuffer::{self, VGA_TEST_SLICE},
-    memory, println, serial_dbg, serial_print, dbg,
+    memory, println, serial_dbg, serial_print,
 };
 
 #[allow(dead_code)]
@@ -27,6 +28,8 @@ pub fn main() {
     let mut buffer = framebuffer::Buffer::new(framebuffer_tag);
     let red = framebuffer::Color::new(255, 0, 0); // RGB(255, 0, 0)
     buffer.clear(red);
+
+    println!("{}\n", VGA_TEST_SLICE);
 
     dbg!(framebuffer_tag);
 

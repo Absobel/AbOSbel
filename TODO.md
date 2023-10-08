@@ -5,10 +5,15 @@
     [x] - Display smth
     [x] - Rewrite println! macro
     [x] - Resuse println! macro (serial_println -> println)
+    [ ] - Make it work for other resolutions
+[ ] - tests
+    [ ] - unit
+    [ ] - integration
 [ ] - Keyboard input ?
 [ ] - continue the tutorial
 [ ] - After allocator, rewrite the graphical part and a lot of other things
     [ ] - rewrite buffer into a vec/smth
+    [ ] - Adapt for different framebuffers colors and offset
 [ ] - Logging
 [ ] - PIC to APIC
 [ ] - Write the multiboot part in rust, even the bootstrap if i'm feeling like it
