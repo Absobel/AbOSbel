@@ -8,7 +8,6 @@ pub fn init(multiboot_info_addr: usize) {
     x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
 
     unsafe { crate::memory::load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
-    // Load the multiboot information
 }
 
 // QEMU EXIT CODE

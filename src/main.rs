@@ -6,7 +6,7 @@
 
 mod real_main;
 
-use ab_os_bel::{hlt_loop, println};
+use ab_os_bel::hlt_loop;
 
 use core::panic::PanicInfo;
 
