@@ -1,23 +1,11 @@
-use core::{cell::OnceCell, ops::Deref};
+use core::cell::OnceCell;
 
 use multiboot2::{BootInformation, BootInformationHeader, MbiLoadError};
 
+use crate::framebuffer::init_buffer;
+
 pub static MULTIBOOT2_INFO: Multiboot2Info = Multiboot2Info(OnceCell::new());
-
-pub struct Multiboot2Info(OnceCell<BootInformation<'static>>);
-
-/**
- * I Feel like the unsafe impl on the wrapper is justified as it is only intiialised once in a safe context
- * and reading it shouldn't be a problem so isok
- */
-unsafe impl Sync for Multiboot2Info {}
-impl Deref for Multiboot2Info {
-    type Target = OnceCell<BootInformation<'static>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+crate::sync_wrapper!(Multiboot2Info, BootInformation<'static>);
 
 // INITIALIZATION
 pub fn init(multiboot_info_addr: usize) {
@@ -29,6 +17,7 @@ pub fn init(multiboot_info_addr: usize) {
     x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
 
     unsafe { load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
+    init_buffer();
 }
 
 // QEMU EXIT CODE
@@ -66,4 +55,23 @@ pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), MbiLoadEr
         )?)
         .expect("Shouldn't be initialized");
     Ok(())
+}
+
+// MACRO
+
+/* TODO : this feels bad idk why but it will do */
+#[macro_export]
+macro_rules! sync_wrapper {
+    ($name:ident, $type:ty) => {
+        pub struct $name(OnceCell<$type>);
+        unsafe impl Sync for $name {}
+        use core::ops::Deref;
+        impl Deref for $name {
+            type Target = OnceCell<$type>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+    };
 }

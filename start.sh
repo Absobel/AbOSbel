@@ -34,7 +34,7 @@ else
 fi
 
 qemu-system-x86_64 \
-  -m "4G" \
+  -m "1G" \
   -cdrom target/ab-os-bel.iso \
   -serial stdio \
   -no-reboot \
