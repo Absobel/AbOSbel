@@ -1,21 +1,9 @@
-use multiboot2::{BootInformation, BootInformationHeader, MbiLoadError};
+use crate::MULTIBOOT2_INFO;
 
 pub const PAGE_SIZE: usize = 4096;
 
-pub static mut MULTIBOOT2_INFO: Option<BootInformation> = None;
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), MbiLoadError> {
-    if MULTIBOOT2_INFO.is_none() {
-        MULTIBOOT2_INFO = Some(BootInformation::load(
-            multiboot_info_addr as *const BootInformationHeader,
-        )?);
-    }
-    Ok(())
-}
-
 pub fn total_mem() -> usize {
-    let boot_info = unsafe { MULTIBOOT2_INFO.as_ref().expect("Multiboot info required") };
+    let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot Info Required");
 
     boot_info
         .memory_map_tag()
@@ -47,7 +35,7 @@ impl Frame {
 
 // TODO: redo this function
 pub fn frame_allocator() -> impl FrameAllocator {
-    let boot_info = unsafe { MULTIBOOT2_INFO.as_ref().expect("Multiboot info required") };
+    let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
 
     let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
 

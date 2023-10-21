@@ -79,6 +79,7 @@ impl<'a> AreaFrameAllocator<'a> {
     }
 
     // TODO: CHECK IF MEMORY AREA TYPE == AVAILABLE
+    // Anyway I can't use memory type anymore since uefi
     fn choose_next_area(&mut self) {
         self.current_area = self
             .areas

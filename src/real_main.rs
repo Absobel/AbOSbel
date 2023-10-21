@@ -1,19 +1,17 @@
 use ab_os_bel::{
     dbg,
     framebuffer::{self, VGA_TEST_SLICE},
-    memory, println, serial_dbg, serial_print,
+    println, serial_dbg, serial_print, MULTIBOOT2_INFO,
 };
 
 #[allow(dead_code)]
 pub fn main() {
-    let framebuffer_tag = unsafe {
-        memory::MULTIBOOT2_INFO
-            .as_ref()
-            .expect("Multiboot info required")
-            .framebuffer_tag()
-            .expect("Framebuffer required")
-            .expect("Framebuffer required")
-    };
+    let framebuffer_tag = MULTIBOOT2_INFO
+        .get()
+        .expect("Multiboot info required")
+        .framebuffer_tag()
+        .expect("Framebuffer required")
+        .expect("Framebuffer required");
 
     serial_dbg!(framebuffer_tag);
     serial_print!("\n\n");

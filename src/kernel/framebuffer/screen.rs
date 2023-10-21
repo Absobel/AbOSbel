@@ -32,6 +32,10 @@ pub struct Buffer {
     buffer: &'static mut [Color],
 }
 
+// TODO : Implement a Buffer trait to account for different bpp (also more Color types)
+// Also take the padding into account by checking pitch against width * bpp / 8
+// Also put the Color type in private and add method to buffer to create a new pixel of Color to check that the color asked is supported (alpha channel, etc.)
+// Also take into account the offset given by the framebuffer tag
 impl Buffer {
     pub fn new(framebuffer_tag: &FramebufferTag) -> Self {
         let width = framebuffer_tag.width() as usize;
