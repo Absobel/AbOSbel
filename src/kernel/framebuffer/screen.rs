@@ -24,6 +24,7 @@ impl Color {
     }
 }
 
+#[derive(Debug)]
 pub struct Buffer {
     max_x: usize,
     max_y: usize,

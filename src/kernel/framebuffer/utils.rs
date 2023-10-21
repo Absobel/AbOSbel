@@ -3,7 +3,10 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use core::fmt::{self, Write};
+use core::{
+    cell::OnceCell,
+    fmt::{self, Write},
+};
 
 use super::{Buffer, TextBuffer, Writer};
 
@@ -66,6 +69,23 @@ impl SliceOutOfBoundsError {
 }
 
 //////////////////////////////////
+
+crate::sync_wrapper!(FrameBuffer, Mutex<Buffer>);
+pub static BUFFER: FrameBuffer = FrameBuffer(OnceCell::new());
+
+pub fn init_buffer() {
+    let framebuffer_tag = crate::MULTIBOOT2_INFO
+        .get()
+        .expect("Multiboot info required")
+        .framebuffer_tag()
+        .expect("Framebuffer required")
+        .expect("Framebuffer required");
+
+    BUFFER
+        .0
+        .set(Mutex::new(Buffer::new(framebuffer_tag)))
+        .expect("Shouldn't be initialised");
+}
 
 // TODO : This shit is so awful i can't even, how do I modify the text buffer scale factor ? Dumbass
 // Also this is so unfuture proof 'cauz it will be a pain to check what is initialized before what and

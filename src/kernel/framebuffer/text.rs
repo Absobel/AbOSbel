@@ -3,6 +3,7 @@ use core::fmt;
 use super::{Buffer, Color, OutOfBoundsError};
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct TextBuffer {
     buffer: Buffer,
     max_char_x: usize,
