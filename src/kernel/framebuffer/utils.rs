@@ -73,14 +73,12 @@ impl SliceOutOfBoundsError {
 // This is just for debugging purposes though, I'll make a way better implementation after having gotten an allocator
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new({
-        let framebuffer_tag = unsafe {
-            crate::memory::MULTIBOOT2_INFO
-                .as_ref()
-                .expect("Multiboot info required")
-                .framebuffer_tag()
-                .expect("Framebuffer required")
-                .expect("Framebuffer required")
-        };
+        let framebuffer_tag = crate::MULTIBOOT2_INFO
+            .get()
+            .expect("Multiboot info required")
+            .framebuffer_tag()
+            .expect("Framebuffer required")
+            .expect("Framebuffer required");
 
         let buffer = Buffer::new(framebuffer_tag);
         let text_buffer = TextBuffer::new(buffer, 1);
