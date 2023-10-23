@@ -9,7 +9,10 @@ use x86_64::registers::control::Cr0;
 
 pub fn main() {
     let red = framebuffer::Color::new(255, 0, 0, 255); // RGB(255, 0, 0)
-    BUFFER.get().expect("Buffer required").lock().clear(red);
+    let lavander = framebuffer::Color::new(191, 148, 228, 255); // RGB(191, 148, 228)
+    let buffer = BUFFER.get().expect("Buffer required");
+
+    buffer.lock().clear(lavander);
 
     println!("{}\n", VGA_TEST_SLICE);
 
@@ -21,6 +24,11 @@ pub fn main() {
 
     let smth = Cr0::read();
     dbg!(smth);
+
+    println!();
+    x86_64::instructions::interrupts::int3();
+
+    buffer.lock().clear(lavander);
 
     println!("\nEnd of program.");
 }

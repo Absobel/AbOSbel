@@ -1,15 +1,16 @@
 [x] - make it boot with grub
 [x] - return to the previous state (no matter the state of tests)
 [x] - make the test environnement work again
-[ ] - VGA to UEFI Framebuffer
+[x] - VGA to UEFI Framebuffer
     [x] - Display smth
     [x] - Rewrite println! macro
     [x] - Resuse println! macro (serial_println -> println)
-    [ ] - Make it work for other resolutions
+    [ ] - ~~Make it work for other resolutions~~
+    [x] - Change from 24 bpp to 32 bpp
 [ ] - tests
     [ ] - unit
     [ ] - integration
-[ ] - Keyboard input ?
+[ ] - Interrupts
 [ ] - continue the tutorial
 [ ] - After allocator, rewrite the graphical part and a lot of other things
     [ ] - rewrite buffer into a vec/smth

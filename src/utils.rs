@@ -10,11 +10,8 @@ crate::sync_wrapper!(Multiboot2Info, BootInformation<'static>);
 // INITIALIZATION
 pub fn init(multiboot_info_addr: usize) {
     crate::interrupts::init_idt(); // Initialize the interruptions and the handlers
-
     crate::gdt::init(); // Initialize the segmentation for interruption stacks
-    unsafe { crate::interrupts::PICS.lock().initialize() }; // Initialize the PIC8259 for hardware interruption
-
-    x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
+                        // x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
 
     unsafe { load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
     init_buffer();
