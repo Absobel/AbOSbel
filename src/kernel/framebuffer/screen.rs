@@ -31,7 +31,7 @@ impl Buffer {
         let height = framebuffer_tag.height() as usize;
         let pitch = framebuffer_tag.pitch() as usize;
         let bpp = framebuffer_tag.bpp() as usize;
-        let len = (height * pitch) / (bpp/8);
+        let len = (height * pitch) / (bpp / 8);
         Buffer {
             max_x: width,
             max_y: height,
@@ -44,7 +44,7 @@ impl Buffer {
     }
 
     fn coord_to_pxl_offset(&self, x: isize, y: isize) -> isize {
-        y * self.pitch as isize / (self.bpp as isize/8) + x
+        y * self.pitch as isize / (self.bpp as isize / 8) + x
     }
 
     fn pxl(&mut self, x: usize, y: usize) -> Result<&mut Color, OutOfBoundsError> {
