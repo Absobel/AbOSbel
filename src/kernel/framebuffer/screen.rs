@@ -4,23 +4,11 @@ use super::utils::*;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct Color(u8, u8, u8);
+pub struct Color(u8, u8, u8, u8);
 
 impl Color {
-    pub fn new(r: u8, g: u8, b: u8) -> Self {
-        Color(b, g, r)
-    }
-
-    pub fn b(&self) -> u8 {
-        self.0
-    }
-
-    pub fn g(&self) -> u8 {
-        self.1
-    }
-
-    pub fn r(&self) -> u8 {
-        self.2
+    pub fn new(r: u8, g: u8, b: u8, alpha: u8) -> Self {
+        Color(b, g, r, alpha)
     }
 }
 
@@ -43,7 +31,7 @@ impl Buffer {
         let height = framebuffer_tag.height() as usize;
         let pitch = framebuffer_tag.pitch() as usize;
         let bpp = framebuffer_tag.bpp() as usize;
-        let len = (height * pitch + width * bpp / 8) / 3;
+        let len = (height * pitch) / (bpp/8);
         Buffer {
             max_x: width,
             max_y: height,
@@ -56,7 +44,7 @@ impl Buffer {
     }
 
     fn coord_to_pxl_offset(&self, x: isize, y: isize) -> isize {
-        (y * self.pitch as isize + x * self.bpp as isize / 8) / 3
+        y * self.pitch as isize / (self.bpp as isize/8) + x
     }
 
     fn pxl(&mut self, x: usize, y: usize) -> Result<&mut Color, OutOfBoundsError> {

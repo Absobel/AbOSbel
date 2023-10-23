@@ -160,8 +160,8 @@ impl Writer {
     pub fn new(text_buffer: TextBuffer) -> Self {
         Writer {
             column_position: 0,
-            background_code: Color::new(0, 0, 0),
-            foreground_code: Color::new(255, 255, 255),
+            background_code: Color::new(0, 0, 0, 255),
+            foreground_code: Color::new(255, 255, 255, 255),
             text_buffer,
         }
     }

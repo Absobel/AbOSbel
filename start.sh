@@ -33,16 +33,26 @@ else
   EXTRA_QEMU_FLAGS="-display none"
 fi
 
+FLAGS=''
+
+# Options
+FLAGS+='-m 1G '
+FLAGS+='-vga vmware ' # Allows 32 bpp
+
+FLAGS+='-cdrom target/ab-os-bel.iso '
+FLAGS+='-serial stdio ' # Allows printing to console
+FLAGS+='-no-reboot ' # If the os reboots, exist instead
+
+# Tests
+FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
+
+# UEFI
+FLAGS+='-drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on '
+FLAGS+='-drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd '
+
 qemu-system-x86_64 \
-  -m "1G" \
-  -cdrom target/ab-os-bel.iso \
-  -serial stdio \
-  -no-reboot \
-  -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
-  -drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on \
-  -drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd \
+  $FLAGS \
   $EXTRA_QEMU_FLAGS
-  #-vga virtio \
 
 exit_code=$?
 
