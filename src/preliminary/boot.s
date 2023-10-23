@@ -229,19 +229,23 @@ long_mode_start:
 /* BSS : section where uninitialised data is stored */
 
 .section .bss
+.SET STACK_SIZE, 4096*4
+.SET P2_TABLE_SIZE, 4096*4
+.SET P3_TABLE_SIZE, 4096
+.SET P4_TABLE_SIZE, 4096
 
 /* allocate pages */
 .align 4096 /* align to 4096 bytes (page size) */
 p4_table:
-    .space 4096
+    .space P4_TABLE_SIZE
 p3_table:
-    .space 4096
+    .space P3_TABLE_SIZE
 p2_table:
-    .space 4096*4
+    .space P2_TABLE_SIZE
 
 /* allocate stack */
 stack_bottom:
-    .space 4096*4
+    .space STACK_SIZE
 stack_top:
 
 
