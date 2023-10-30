@@ -15,9 +15,12 @@ use core::panic::PanicInfo;
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    use ab_os_bel::println;
+    use ab_os_bel::{framebuffer::WRITER, println, serial_println};
 
-    println!("{}", info);
+    serial_println!("{}", info);
+    if WRITER.get().is_some() {
+        println!("{}", info);
+    }
     hlt_loop()
 }
 

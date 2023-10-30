@@ -4,10 +4,6 @@ build-std-features = ["compiler-builtins-mem"]
 
 [build]
 target = "x86_64-abosbel-none.json"
-#target = "x86_64-unknown-none"
-# rustflags = [
-#     "-C", "link-arg=-Tlinker.ld",
-# ]
 
 [target.'cfg(target_os = "none")']
 runner = "./start.sh"

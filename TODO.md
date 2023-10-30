@@ -7,6 +7,7 @@
     [x] - Resuse println! macro (serial_println -> println)
     [ ] - ~~Make it work for other resolutions~~
     [x] - Change from 24 bpp to 32 bpp
+    [ ] - WC through MTRR for framebuffer
 [ ] - tests
     [ ] - unit
     [ ] - integration

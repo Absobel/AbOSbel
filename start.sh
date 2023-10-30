@@ -1,14 +1,32 @@
 #!/bin/bash
 
+
+### VARS ###
+
 EXEC_PATH=$1
+
+TEST="false"
+if [[ $EXEC_PATH != *"ab-os-bel" ]]; then
+  TEST="true"
+fi
+DEBUG="false"
+if [[ $2 == "debug" ]]; then
+  DEBUG="true"
+fi
+
+
+#### CREATE ISO ####
+
+# VARS
+ISO_DIR="target/iso"
+
+cp $EXEC_PATH target/ab-os-bel
 
 # Check if the thins is multiboot compliant
 if ! grub-file --is-x86-multiboot2 "$EXEC_PATH"; then
     echo -e "\e[1;31mERROR:\e[0m Kernel is not Multiboot 2 compliant."
     exit 1
 fi
-
-ISO_DIR="target/iso"
 
 # Sets up the iso dir
 rm -rf ${ISO_DIR}
@@ -26,34 +44,45 @@ grub-mkstandalone \
 # Creates the iso
 grub-mkrescue -o target/ab-os-bel.iso ${ISO_DIR} > /dev/null 2>&1
 
+
+
+#### QEMU ####
+  
 # Detect if it's not a test by checking if the executable name ends with "ab-os-bel"
-if [[ $EXEC_PATH == *"ab-os-bel" ]]; then
-  EXTRA_QEMU_FLAGS=""
-else
-  EXTRA_QEMU_FLAGS="-display none"
+EXTRA_QEMU_FLAGS=""
+if [[ $TEST == "true" ]]; then
+  EXTRA_QEMU_FLAGS+="-display none "
+fi
+if [[ $DEBUG == "true" ]]; then
+  EXTRA_QEMU_FLAGS+="-s -S "
 fi
 
-FLAGS=''
-
+QEMU_FLAGS=''
 # Options
-FLAGS+='-m 1G '
-FLAGS+='-vga vmware ' # Allows 32 bpp
-
-FLAGS+='-cdrom target/ab-os-bel.iso '
-FLAGS+='-serial stdio ' # Allows printing to console
-FLAGS+='-no-reboot ' # If the os reboots, exist instead
-
+QEMU_FLAGS+='-m 1G '
+QEMU_FLAGS+='-vga vmware ' # Allows 32 bpp
+# Settings
+QEMU_FLAGS+='-cdrom target/ab-os-bel.iso '
+QEMU_FLAGS+='-serial stdio ' # Allows printing to console
+QEMU_FLAGS+='-no-reboot ' # If the os reboots, exist instead
+QEMU_FLAGS+='-cpu host ' # Use the host cpu
+QEMU_FLAGS+='-enable-kvm ' # Enable KVM
 # Tests
-FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
+QEMU_FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
 
-# UEFI
-FLAGS+='-drive if=pflash,format=raw,unit=0,file=/usr/share/ovmf/x64/OVMF_CODE.fd,readonly=on '
-FLAGS+='-drive if=pflash,format=raw,unit=1,file=/usr/share/ovmf/x64/OVMF_VARS.fd '
+qemu-system-x86_64 $QEMU_FLAGS $EXTRA_QEMU_FLAGS &
 
-qemu-system-x86_64 \
-  $FLAGS \
-  $EXTRA_QEMU_FLAGS
+qemu_pid=$!
 
+if [[ $DEBUG == "true" ]]; then
+  rust-gdb \
+    -ex "target remote localhost:1234" \
+    -ex "set architecture i386:x86-64" \
+    -ex "hbreak src/kernel/x86/msr.rs:130" \
+    $EXEC_PATH
+fi
+
+wait $qemu_pid
 exit_code=$?
 
 if [ $exit_code -eq 33 ]; then

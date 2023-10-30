@@ -2,14 +2,21 @@ This is my own OS ! And it's written in Rust because I use Rust btw.
 There's pretty much no chance it builds in another environnement than Linux but I've never actually tried, but that's what docker is for so yeah.
 
 I'm following this [tutorial](https://os.phil-opp.com/) but changed ~~a few~~ things along the way.
+EDIT : I'm not following this anymore, I deviated way too much
+
+## Features
+It boots on UEFI so too bad for the three BIOS users out there
+It only supports 32 bpp framebuffers for now (so 4 bytes per pixel)
+x86_64 only because I'm not a masochist (at least not for the foreseeable future)
 
 ## Installation
 
 To build the project and obtain the kernel binary, run `cargo build`. The kernel binary will be located at `target/x86_64-abosbel-none/release/ab-os-bel` in release mode or `target/x86_64-abosbel-none/debug/ab-os-bel` in debug mode. 
 
-To both build and run the project, use `cargo run`. This will create an `.iso` file located at `target/ab-os-bel.iso` and attempt to launch the OS in QEMU. If QEMU is not installed, the OS won't run, but the `.iso` will still be generated. 
+To both build and run the project, use `cargo run`. This will create an `.iso` file located at `target/ab-os-bel.iso` and attempt to launch the OS in QEMU. If QEMU is not installed, the OS won't run, but the `.iso` will still be generated. Also the kernel will be copied to `target/ab-os-bel` for convenience.
 
 Note: Ensure you have rustup and cargo installed with the nightly toolchain, along with QEMU for running the OS.
+Note 2: Don't bother with `install.sh`, it will just work on my machine
 
 ## Running with Docker
 
