@@ -5,8 +5,8 @@ I'm following this [tutorial](https://os.phil-opp.com/) but changed ~~a few~~ th
 EDIT : I'm not following this anymore, I deviated way too much
 
 ## Features
-It boots on UEFI so too bad for the three BIOS users out there
-It only supports 32 bpp framebuffers for now (so 4 bytes per pixel)
+It boots on UEFI so too bad for the three BIOS users out there  
+It only supports 32 bpp framebuffers for now (so 4 bytes per pixel)  
 x86_64 only because I'm not a masochist (at least not for the foreseeable future)
 
 ## Installation
