@@ -1,11 +1,12 @@
 use core::fmt;
 
-use super::{Buffer, Color, OutOfBoundsError};
+use spin::MutexGuard;
+
+use super::{Buffer, Color, OutOfBoundsError, BUFFER, TEXT_BUFFER};
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct TextBuffer {
-    buffer: Buffer,
     max_char_x: usize,
     max_char_y: usize,
     scale_factor: usize,
@@ -14,19 +15,23 @@ pub struct TextBuffer {
 }
 
 impl TextBuffer {
-    pub fn new(buffer: Buffer, scale_factor: usize) -> Self {
+    pub fn new(scale_factor: usize) -> Self {
+        let buffer = BUFFER.get().expect("Buffer required").lock();
         let max_char_x = buffer.max_x() / (VGA_CHAR_SIZE.0 * scale_factor);
         let padding_char_x = (buffer.max_x() % (VGA_CHAR_SIZE.0 * scale_factor)) * VGA_CHAR_SIZE.1;
         let max_char_y = buffer.max_y() / (VGA_CHAR_SIZE.1 * scale_factor);
         let padding_char_y = (buffer.max_y() % (VGA_CHAR_SIZE.1 * scale_factor)) * VGA_CHAR_SIZE.0;
         TextBuffer {
-            buffer,
             max_char_x,
             max_char_y,
             scale_factor,
             padding_char_x,
             padding_char_y,
         }
+    }
+
+    fn get_buffer() -> MutexGuard<'static, Buffer> {
+        BUFFER.get().expect("Buffer required").lock()
     }
 
     fn char_coord_to_buffer_coord(&self, char_x: isize, char_y: isize) -> (isize, isize) {
@@ -65,7 +70,8 @@ impl TextBuffer {
                     self.char_coord_to_buffer_coord(char_x as isize, char_y as isize);
                 for i in 0..self.scale_factor {
                     for j in 0..self.scale_factor {
-                        self.buffer.write(
+                        let mut buffer = Self::get_buffer();
+                        buffer.write(
                             buffer_x as usize + char_pxl_x * self.scale_factor + i,
                             buffer_y as usize + char_pxl_y * self.scale_factor + j,
                             color,
@@ -138,7 +144,8 @@ impl TextBuffer {
         let len =
             text_len * VGA_CHAR_SIZE.0 * VGA_CHAR_SIZE.1 * self.scale_factor * self.scale_factor
                 + padding;
-        self.buffer.move_slice(x as usize, y as usize, len, dx, dy)
+        let mut buffer = Self::get_buffer();
+        buffer.move_slice(x as usize, y as usize, len, dx, dy)
     }
 
     fn clear_line(&mut self, y: usize, background_color: Color) -> Result<(), OutOfBoundsError> {
@@ -149,21 +156,26 @@ impl TextBuffer {
     }
 }
 
+#[derive(Debug)]
 pub struct Writer {
     column_position: usize,
     background_code: Color,
     foreground_code: Color,
-    text_buffer: TextBuffer,
 }
 
-impl Writer {
-    pub fn new(text_buffer: TextBuffer) -> Self {
+impl Default for Writer {
+    fn default() -> Self {
         Writer {
             column_position: 0,
             background_code: Color::new(0, 0, 0, 255),
             foreground_code: Color::new(255, 255, 255, 255),
-            text_buffer,
         }
+    }
+}
+
+impl Writer {
+    fn get_text_buffer() -> MutexGuard<'static, TextBuffer> {
+        TEXT_BUFFER.get().expect("Text buffer required").lock()
     }
 
     pub fn change_background_color(&mut self, color: Color) {
@@ -175,17 +187,19 @@ impl Writer {
     }
 
     pub fn write_str(&mut self, string: &str) -> Result<(), OutOfBoundsError> {
+        let mut text_buffer = Self::get_text_buffer();
         for char in string.chars() {
             match char {
-                '\n' => self.new_line(),
+                '\n' => self.new_line(&mut text_buffer),
                 char => {
-                    if self.column_position >= self.text_buffer.max_char_x {
-                        self.new_line();
+                    if self.column_position >= text_buffer.max_char_x {
+                        self.new_line(&mut text_buffer);
                     }
-                    self.text_buffer.write_char(
+                    let max_char_y = text_buffer.max_char_y;
+                    text_buffer.write_char(
                         char,
                         self.column_position,
-                        self.text_buffer.max_char_y - 1,
+                        max_char_y - 1,
                         self.background_code,
                         self.foreground_code,
                     )?;
@@ -196,19 +210,20 @@ impl Writer {
         Ok(())
     }
 
-    fn clear_line(&mut self) {
-        self.text_buffer
-            .clear_line(self.text_buffer.max_char_y - 1, self.background_code)
+    fn clear_line(&mut self, text_buffer: &mut MutexGuard<'_, TextBuffer>) {
+        let max_char_y = text_buffer.max_char_y;
+        text_buffer
+            .clear_line(max_char_y - 1, self.background_code)
             .expect("Is not out of bounds as it is a function called manually.");
         self.column_position = 0;
     }
 
-    fn new_line(&mut self) {
-        let text_len = self.text_buffer.max_char_x * (self.text_buffer.max_char_y - 1);
-        self.text_buffer
+    fn new_line(&mut self, text_buffer: &mut MutexGuard<'_, TextBuffer>) {
+        let text_len = text_buffer.max_char_x * (text_buffer.max_char_y - 1);
+        text_buffer
             .move_slice_text(0, 1, text_len, 0, -1)
             .expect("Is not out of bound as it is a function called manually.");
-        self.clear_line();
+        self.clear_line(text_buffer);
     }
 }
 

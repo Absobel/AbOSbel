@@ -1,12 +1,9 @@
 #![allow(dead_code)]
 
-use lazy_static::lazy_static;
-use spin::Mutex;
+use core::fmt::{self, Write};
 
-use core::{
-    cell::OnceCell,
-    fmt::{self, Write},
-};
+use crate::x86::set_mtrr_wc;
+use spin::Mutex;
 
 use super::{Buffer, TextBuffer, Writer};
 
@@ -70,10 +67,11 @@ impl SliceOutOfBoundsError {
 
 //////////////////////////////////
 
-crate::sync_wrapper!(FrameBuffer, Mutex<Buffer>);
-pub static BUFFER: FrameBuffer = FrameBuffer(OnceCell::new());
+crate::sync_wrapper!(BUFFER, FrameBuffer, Mutex<Buffer>);
+crate::sync_wrapper!(TEXT_BUFFER, OnceTextBuffer, Mutex<TextBuffer>);
+crate::sync_wrapper!(WRITER, OnceWriter, Mutex<Writer>);
 
-pub fn init_buffer() {
+pub fn init_graphics() {
     let framebuffer_tag = crate::MULTIBOOT2_INFO
         .get()
         .expect("Multiboot info required")
@@ -81,30 +79,21 @@ pub fn init_buffer() {
         .expect("Framebuffer required")
         .expect("Framebuffer required");
 
+    let height = framebuffer_tag.height() as usize;
+    let pitch = framebuffer_tag.pitch() as usize;
+    set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
+
     BUFFER
-        .0
         .set(Mutex::new(Buffer::new(framebuffer_tag)))
         .expect("Shouldn't be initialised");
-}
 
-// TODO : This shit is so awful i can't even, how do I modify the text buffer scale factor ? Dumbass
-// Also this is so unfuture proof 'cauz it will be a pain to check what is initialized before what and
-// welcome random panics
-// This is just for debugging purposes though, I'll make a way better implementation after having gotten an allocator
-lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new({
-        let framebuffer_tag = crate::MULTIBOOT2_INFO
-            .get()
-            .expect("Multiboot info required")
-            .framebuffer_tag()
-            .expect("Framebuffer required")
-            .expect("Framebuffer required");
+    TEXT_BUFFER
+        .set(Mutex::new(TextBuffer::new(1)))
+        .expect("Shouldn't be initialised");
 
-        let buffer = Buffer::new(framebuffer_tag);
-        let text_buffer = TextBuffer::new(buffer, 1);
-
-        Writer::new(text_buffer)
-    });
+    WRITER
+        .set(Mutex::new(Writer::default()))
+        .expect("Shouldn't be initialised");
 }
 
 #[doc(hidden)]
@@ -112,6 +101,8 @@ pub fn _print(args: fmt::Arguments) {
     // Deactivating interrupts to avoid deadlocks
     x86_64::instructions::interrupts::without_interrupts(|| {
         WRITER
+            .get()
+            .expect("Writer required")
             .lock()
             .write_fmt(args)
             .expect("Printing to Framebuffer failed");

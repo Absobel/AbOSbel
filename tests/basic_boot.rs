@@ -30,7 +30,7 @@ fn panic(info: &PanicInfo) -> ! {
 
 // TESTS
 
-use ab_os_bel::{memory::load_multiboot, println};
+use ab_os_bel::{load_multiboot, println};
 
 #[test_case]
 fn no_panic_println() {
