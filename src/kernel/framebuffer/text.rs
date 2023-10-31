@@ -237,14 +237,15 @@ impl fmt::Write for Writer {
 ////////////////////////////////////////////
 
 const VGA_FONT: &[u8] = include_bytes!("../../../assets/VGA9.F16");
-const VGA_CHAR_SIZE: (usize, usize) = (9, 16);
+const VGA_CHAR_SIZE: (usize, usize) = (8, 16);
 
 pub const VGA_TEST_SLICE: &str = " ☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ";
 
 fn nth_char(n: usize) -> &'static [u8] {
     &VGA_FONT[n * 16..(n + 1) * 16]
 }
-// TODO : transform this to a proc macro
+
+// TODO : transform this to a BTreeMap once there is a memory allocator
 fn char_to_font_idx(c: char) -> usize {
     match c {
         //' ' => 0,

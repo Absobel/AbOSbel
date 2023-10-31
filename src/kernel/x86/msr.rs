@@ -1,7 +1,5 @@
 use core::{arch::asm, ops::RangeInclusive};
 
-use crate::serial_println;
-
 use super::utils::{cpu_has_feature, MSR_FEATURE};
 
 // TODO : add safe abstractions
@@ -12,6 +10,9 @@ const IA32_MTRRCAP: usize = 0xFE;
 const IA32_MTRR_DEF_TYPE: usize = 0x2FF;
 
 const WC_MEMORY_TYPE: usize = 1;
+
+// TODO : Find this through cpuid or smth
+const NB_PHYSICAL_ADDRESS_BITS: usize = 48;
 
 ////////////////////////////////
 
@@ -59,14 +60,9 @@ unsafe fn writemsr(reg: usize, bits: RangeInclusive<usize>, value: usize) -> Res
     if value >> (bits.end() - bits.start() + 1) != 0 {
         return Err(MsrError::ValueExceedsBitRange);
     }
-    serial_println!("reg = {:#x}", reg); // DEBUG
-    serial_println!("value = {:#x}", value); // DEBUG
-    serial_println!("bits = {:?}", bits); // DEBUG
     let byte = readmsr_byte(reg);
-    serial_println!("byte = {:#x}", byte); // DEBUG
     let mask = (1 << (bits.end() + 1)) - (1 << bits.start());
     let new_byte = (byte & !mask) | ((value << bits.start()) & mask);
-    serial_println!("new_byte = {:#x}", new_byte); // DEBUG
     writemsr_byte(reg, new_byte);
     Ok(())
 }
@@ -116,29 +112,19 @@ pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
         return Err(MsrError::NoWCTypeSupport);
     }
 
-    serial_println!("addr = {:#x}", addr); // DEBUG
-    serial_println!("size = {:#x}", size.next_power_of_two()); // DEBUG
-
-    serial_println!("/// Enabling MTRR..."); // DEBUG
     enable_mtrr();
 
     // Use the MTTR pair to set the WC memory type to the given address range
     let (base_reg, mask_reg) = free_mtrr_pair().ok_or(MsrError::NoFreeMtrPair)?;
-    // size must be aligned to a boundary of a power of two and not be bigger than 52 bits
-    let mask = !(size.next_power_of_two() - 1) & ((1 << 52) - 1);
+    // size must be aligned to a boundary of a power of two and not be bigger than NB_PHYSYCAL_ADDRESS_BITS bits
+    let mask = !(size.next_power_of_two() - 1) & ((1 << NB_PHYSICAL_ADDRESS_BITS) - 1);
 
     x86_64::instructions::interrupts::without_interrupts(move || unsafe {
-        serial_println!("/// Setting the base address..."); // DEBUG
-        writemsr(base_reg, 12..=51, addr >> 12).unwrap(); // Set the base address
-        serial_println!("/// Setting the memory type..."); // DEBUG
+        writemsr(base_reg, 12..=(NB_PHYSICAL_ADDRESS_BITS-1), addr >> 12).unwrap(); // Set the base address
         writemsr(base_reg, 0..=7, WC_MEMORY_TYPE).unwrap(); // Set the memory type
-        serial_println!("/// Setting the mask..."); // DEBUG
-        writemsr(mask_reg, 12..=51, mask >> 12).unwrap(); // Set the mask
-        serial_println!("/// Setting the valid bit..."); // DEBUG
+        writemsr(mask_reg, 12..=(NB_PHYSICAL_ADDRESS_BITS-1), mask >> 12).unwrap(); // Set the mask
         writemsr(mask_reg, 11..=11, 1).unwrap(); // Set the valid bit
     });
-
-    serial_println!("Done !"); // DEBUG
 
     Ok(())
 }
