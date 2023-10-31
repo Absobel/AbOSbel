@@ -108,3 +108,13 @@ pub fn _print(args: fmt::Arguments) {
             .expect("Printing to Framebuffer failed");
     });
 }
+
+///////////////
+
+pub fn usize_plus_isize(u: usize, i: isize) -> usize {
+    if i < 0 {
+        u - i.wrapping_abs() as usize
+    } else {
+        u + i as usize
+    }
+}

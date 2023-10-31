@@ -229,7 +229,7 @@ long_mode_start:
 /* BSS : section where uninitialised data is stored */
 
 .section .bss
-.SET STACK_SIZE, 4096*4
+.SET STACK_SIZE, 4096*16 /* TODO : Make the stack grow automatically one day */
 .SET P2_TABLE_SIZE, 4096*4
 .SET P3_TABLE_SIZE, 4096
 .SET P4_TABLE_SIZE, 4096

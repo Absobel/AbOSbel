@@ -78,7 +78,7 @@ if [[ $DEBUG == "true" ]]; then
   rust-gdb \
     -ex "target remote localhost:1234" \
     -ex "set architecture i386:x86-64" \
-    -ex "hbreak src/kernel/x86/msr.rs:130" \
+    -ex "hbreak src/kernel/framebuffer/screen.rs:57" \
     $EXEC_PATH
 fi
 

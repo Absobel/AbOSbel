@@ -95,13 +95,13 @@ impl Buffer {
                 y * self.max_x + x + len,
                 self.max_x * self.max_y,
             ));
-        } else if !(0..self.max_x).contains(&(x + dx as usize))
-            || !(0..self.max_y).contains(&(y + dy as usize))
-            || (y + dx as usize) * self.max_x + x + dx as usize + len > self.max_x * self.max_y
+        } else if !(0..self.max_x).contains(&(usize_plus_isize(x, dx)))
+            || !(0..self.max_y).contains(&(usize_plus_isize(y, dy)))
+            || (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx) + len > self.max_x * self.max_y
         {
             return Err(OutOfBoundsError::new_slice(
-                (y + dx as usize) * self.max_x + x + dx as usize,
-                (y + dx as usize) * self.max_x + x + dx as usize + len,
+                (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx),
+                (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx) + len,
                 self.max_x * self.max_y,
             ));
         }
