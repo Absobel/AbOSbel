@@ -12,7 +12,7 @@ const IA32_MTRR_DEF_TYPE: usize = 0x2FF;
 const WC_MEMORY_TYPE: usize = 1;
 
 // TODO : Find this through cpuid or smth
-const NB_PHYSICAL_ADDRESS_BITS: usize = 48;
+const ADDRESS_WIDTH: usize = 48;
 
 ////////////////////////////////
 
@@ -117,12 +117,12 @@ pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
     // Use the MTTR pair to set the WC memory type to the given address range
     let (base_reg, mask_reg) = free_mtrr_pair().ok_or(MsrError::NoFreeMtrPair)?;
     // size must be aligned to a boundary of a power of two and not be bigger than NB_PHYSYCAL_ADDRESS_BITS bits
-    let mask = !(size.next_power_of_two() - 1) & ((1 << NB_PHYSICAL_ADDRESS_BITS) - 1);
+    let mask = !(size.next_power_of_two() - 1) & ((1 << ADDRESS_WIDTH) - 1);
 
     x86_64::instructions::interrupts::without_interrupts(move || unsafe {
-        writemsr(base_reg, 12..=(NB_PHYSICAL_ADDRESS_BITS-1), addr >> 12).unwrap(); // Set the base address
+        writemsr(base_reg, 12..=(ADDRESS_WIDTH-1), addr >> 12).unwrap(); // Set the base address
         writemsr(base_reg, 0..=7, WC_MEMORY_TYPE).unwrap(); // Set the memory type
-        writemsr(mask_reg, 12..=(NB_PHYSICAL_ADDRESS_BITS-1), mask >> 12).unwrap(); // Set the mask
+        writemsr(mask_reg, 12..=(ADDRESS_WIDTH-1), mask >> 12).unwrap(); // Set the mask
         writemsr(mask_reg, 11..=11, 1).unwrap(); // Set the valid bit
     });
 
