@@ -125,6 +125,15 @@ error:
 /**
  * Initialize the page tables with 512 2MiB pages in P2 table.
 */
+
+.SET NB_P2_TABLES, 4
+.SET NB_P3_TABLES, 1
+.SET NB_P4_TABLES, 1
+
+.SET P2_TABLE_NB_ENTRIES, 512*NB_P2_TABLES /* 16 GiB of RAM cauz huge pages */
+.SET P3_TABLE_NB_ENTRIES, NB_P2_TABLES
+.SET P4_TABLE_NB_ENTRIES, NB_P3_TABLES
+
 set_up_page_tables:
     /* map first P4 entry to P3 table */
     lea eax, [p3_table]
@@ -151,18 +160,37 @@ set_up_page_tables:
     or eax, 0b11 /* present + writable */
     mov [p3_table+24], eax
 
+    /*
+    ; map 16 P3 entries to P2 tables
+    mov ecx, 0       ; counter variable
+    .map_p3_table:
+        ; Compute the address of the ecx-th p2_table
+        ; p2_table + 0x1000*ecx
+        mov eax, ecx
+        shl eax, 12  ; multiply by 0x1000
+        add eax, p2_table
+
+        or eax, 0b11                  ; present + writable
+        mov [p3_table + ecx * 8], eax ; map ecx-th entry
+
+        inc ecx            ; increase counter
+        cmp ecx, P3_TABLE_NB_ENTRIES        ; if counter == 16, the whole P3 table is mapped
+        jne .map_p3_table  ; else map the next entry
+    */
+
     /* map each P2 entry to a huge 2MiB page */
     mov ecx, 0         /* counter variable */
-
     .map_p2_table:
         /* map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx */
-        mov eax, 0x200000  /* 2MiB */
-        mul ecx            /* start address of ecx-th page */
+        /* 0x200000*ecx */
+        mov eax, ecx
+        shl eax, 21  /* multiply by 0x200000 */
+
         or eax, 0b10000011 /* present + writable + huge */
         mov [p2_table + ecx * 8], eax /* map ecx-th entry */
 
         inc ecx            /* increase counter */
-        cmp ecx, 512*4       /* if counter == 1024, the whole P2 tables are mapped */
+        cmp ecx, P2_TABLE_NB_ENTRIES  /* if counter == 1024, the whole P2 tables are mapped */
         jne .map_p2_table  /* else map the next entry */
 
     ret
@@ -229,13 +257,15 @@ long_mode_start:
 /* BSS : section where uninitialised data is stored */
 
 .section .bss
-.SET STACK_SIZE, 4096*16 /* TODO : Make the stack grow automatically one day */
-.SET P2_TABLE_SIZE, 4096*4
-.SET P3_TABLE_SIZE, 4096
-.SET P4_TABLE_SIZE, 4096
+/* TODO : Make the stack grow automatically one day */
+.SET STACK_SIZE, 0x1000*16
+/* TODO : Make paging dynamic, too lazy for that now tho */
+.SET P2_TABLE_SIZE, 0x1000*NB_P2_TABLES
+.SET P3_TABLE_SIZE, 0x1000*NB_P3_TABLES
+.SET P4_TABLE_SIZE, 0x1000*NB_P4_TABLES
 
 /* allocate pages */
-.align 4096 /* align to 4096 bytes (page size) */
+.align 0x1000 /* align to 4096 bytes (page size) */
 p4_table:
     .space P4_TABLE_SIZE
 p3_table:

@@ -78,8 +78,9 @@ if [[ $DEBUG == "true" ]]; then
   rust-gdb \
     -ex "target remote localhost:1234" \
     -ex "set architecture i386:x86-64" \
-    -ex "hbreak src/kernel/framebuffer/screen.rs:57" \
+    -ex "hb enable_paging" \
     $EXEC_PATH
+    # -ex "hbreak src/kernel/framebuffer/screen.rs:57" \
 fi
 
 wait $qemu_pid
