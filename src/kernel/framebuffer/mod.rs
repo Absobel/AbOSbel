@@ -5,7 +5,6 @@ mod screen;
 mod text;
 mod utils;
 
-pub use macros::*;
 pub use screen::*;
 pub use text::*;
 pub use utils::*;
