@@ -4,6 +4,7 @@ use ab_os_bel::{
     dbg,
     framebuffer::{self, BUFFER, VGA_TEST_SLICE},
     io::{inb, outb, PS2_KEYBOARD_IN, PS2_KEYBOARD_OUT},
+    memory::{FRAME_ALLOCATOR, FrameAllocator},
     println, serial_dbg, serial_print, MULTIBOOT2_INFO,
 };
 
@@ -17,15 +18,27 @@ pub fn main() {
     println!("{}\n", VGA_TEST_SLICE);
 
     let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
-    log_tag(boot_info.framebuffer_tag());
+
+    // log_tag(boot_info.framebuffer_tag());
     // log_tag(boot_info.memory_map_tag());
     // log_tag(boot_info.elf_sections());
     // log_tag(boot_info.efi_memory_map_tag()); // None idk why
     // log_tag(boot_info.efi_bs_not_exited_tag());
     // log_tag(boot_info.efi_sdt64_tag());
 
-    println!("\nEnd of program.");
+    let mut frame_allocator = FRAME_ALLOCATOR
+        .get()
+        .expect("Frame allocator required")
+        .lock();
 
+    for i in 0.. {
+        if frame_allocator.allocate_frame().is_none() {
+            println!("allocated {} frames", i);
+            break;
+        }
+    }
+
+    println!("\nEnd of program.");
 }
 
 fn log_tag<T: core::fmt::Debug>(tag: T) {

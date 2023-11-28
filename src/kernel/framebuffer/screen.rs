@@ -1,7 +1,5 @@
 use multiboot2::FramebufferTag;
 
-use crate::serial_dbg;
-
 use super::utils::*;
 
 #[repr(C)]
@@ -100,7 +98,8 @@ impl Buffer {
             ));
         } else if !(0..self.max_x).contains(&(usize_plus_isize(x, dx)))
             || !(0..self.max_y).contains(&(usize_plus_isize(y, dy)))
-            || (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx) + len > self.max_x * self.max_y
+            || (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx) + len
+                > self.max_x * self.max_y
         {
             return Err(OutOfBoundsError::new_slice(
                 (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx),
