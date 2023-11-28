@@ -1,6 +1,6 @@
 use multiboot2::{BootInformation, BootInformationHeader, MbiLoadError};
 
-use crate::framebuffer::init_graphics;
+use crate::{framebuffer::init_graphics, memory::init_frame_alloc};
 
 crate::sync_wrapper!(MULTIBOOT2_INFO, Multiboot2Info, BootInformation<'static>);
 
@@ -12,6 +12,7 @@ pub fn init(multiboot_info_addr: usize) {
 
     unsafe { load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
     init_graphics();
+    init_frame_alloc(); // TODO : à déplacer avant le init_graphics pour quand j'aurias besoin d'allouer des trucs
 }
 
 // QEMU EXIT CODE

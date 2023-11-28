@@ -120,9 +120,9 @@ pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
     let mask = !(size.next_power_of_two() - 1) & ((1 << ADDRESS_WIDTH) - 1);
 
     x86_64::instructions::interrupts::without_interrupts(move || unsafe {
-        writemsr(base_reg, 12..=(ADDRESS_WIDTH-1), addr >> 12).unwrap(); // Set the base address
+        writemsr(base_reg, 12..=(ADDRESS_WIDTH - 1), addr >> 12).unwrap(); // Set the base address
         writemsr(base_reg, 0..=7, WC_MEMORY_TYPE).unwrap(); // Set the memory type
-        writemsr(mask_reg, 12..=(ADDRESS_WIDTH-1), mask >> 12).unwrap(); // Set the mask
+        writemsr(mask_reg, 12..=(ADDRESS_WIDTH - 1), mask >> 12).unwrap(); // Set the mask
         writemsr(mask_reg, 11..=11, 1).unwrap(); // Set the valid bit
     });
 
