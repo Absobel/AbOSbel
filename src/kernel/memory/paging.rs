@@ -73,7 +73,7 @@ impl Entry {
     pub fn set(&mut self, frame: Frame, flags: EntryFlags) {
         assert!(
             frame.start_address() & !0x000fffff_fffff000 == 0,
-            "Frame address is not aligned 0x{:x}",
+            "frame address is not 4KiB aligned : 0x{:x}",
             frame.start_address()
         );
         self.0 = (frame.start_address() as u64) | flags.bits();
@@ -156,10 +156,9 @@ impl<L: TableLevel> Table<L> {
 }
 
 impl<L: HierarchicalLevel> Table<L> {
-    fn next_table_address(&self, index: usize) -> Option<VirtualAddress> {
+    fn lower_table_address(&self, index: usize) -> Option<VirtualAddress> {
         let entry_flags = self[index].flags();
-        if entry_flags.contains(EntryFlags::PRESENT) && !entry_flags.contains(EntryFlags::HUGE_PAGE)
-        {
+        if entry_flags.contains(EntryFlags::PRESENT) && !entry_flags.contains(EntryFlags::HUGE_PAGE) {
             let table_address = self as *const _ as VirtualAddress;
             Some((table_address << 9) | (index << 12))
         } else {
@@ -168,12 +167,12 @@ impl<L: HierarchicalLevel> Table<L> {
     }
 
     pub fn next_table(&self, index: usize) -> Option<&Table<L::NextLevel>> {
-        self.next_table_address(index)
+        self.lower_table_address(index)
             .map(|address| unsafe { &*(address as *const _) })
     }
 
     pub fn next_table_mut(&mut self, index: usize) -> Option<&mut Table<L::NextLevel>> {
-        self.next_table_address(index)
+        self.lower_table_address(index)
             .map(|address| unsafe { &mut *(address as *mut _) })
     }
 
@@ -275,7 +274,7 @@ impl ActivePageTable {
         let p2 = p3.next_table_create(page.p3_index(), allocator);
         let p1 = p2.next_table_create(page.p2_index(), allocator);
 
-        assert!(p1[page.p1_index()].is_unused());
+        assert!(p1[page.p1_index()].is_unused(), "page already mapped"); // TODO : Error handling ?
         p1[page.p1_index()].set(frame, flags | EntryFlags::PRESENT);
     }
 
