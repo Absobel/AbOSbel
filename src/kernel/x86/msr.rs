@@ -3,6 +3,7 @@ use core::{arch::asm, ops::RangeInclusive};
 use super::utils::{cpu_has_feature, MSR_FEATURE};
 
 // TODO : add safe abstractions
+// bitflags crate looks perfect for this and i already use it elsewhere ?
 
 ////////////////////////////////
 

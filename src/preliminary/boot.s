@@ -134,11 +134,17 @@ error:
 .SET P3_TABLE_NB_ENTRIES, NB_P2_TABLES
 .SET P4_TABLE_NB_ENTRIES, NB_P3_TABLES
 
+/* TODO : Reduce this part when paging will be dynamic */
+
 set_up_page_tables:
     /* map first P4 entry to P3 table */
     lea eax, [p3_table]
     or eax, 0b11 /* present + writable */
     mov [p4_table], eax
+
+    lea eax, p4_table
+    or eax, 0b11 /* present + writable */
+    mov [p4_table + 511*8], eax
 
     /* map first P3 entry to P2 table */
     lea eax, [p2_table]

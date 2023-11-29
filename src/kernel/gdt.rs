@@ -5,6 +5,7 @@ use x86_64::VirtAddr;
 
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
+// TODO : Remove lazy_static
 // Fait à l'arrache parce qu'il y a pas encore de memory management
 // TSS : essentiellement array de stacks pour les exceptions
 lazy_static! {

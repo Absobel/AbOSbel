@@ -1,20 +1,25 @@
 use core::slice::Iter;
 
 use multiboot2::MemoryArea;
-use spin::Mutex;
 
-const PAGE_SIZE: usize = 0x1000;
+use super::PhysicalAddress;
+
+pub const PAGE_SIZE: usize = 0x1000;
 
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Frame {
-    number: usize,
+    pub number: usize,
 }
 
 impl Frame {
-    fn from_address(address: usize) -> Self {
+    pub fn from_address(address: PhysicalAddress) -> Self {
         Frame {
             number: address / PAGE_SIZE,
         }
+    }
+
+    pub fn start_address(&self) -> PhysicalAddress {
+        self.number * PAGE_SIZE
     }
 }
 
@@ -43,7 +48,7 @@ impl FrameAllocator for AreaFrameAllocator {
 
             let current_area_last_frame = {
                 let address = area.end_address() - 1;
-                Frame::from_address(address as usize)
+                Frame::from_address(address as PhysicalAddress)
             };
 
             if frame > current_area_last_frame {
@@ -73,10 +78,10 @@ impl FrameAllocator for AreaFrameAllocator {
 
 impl AreaFrameAllocator {
     pub fn new(
-        kernel_start: usize,
-        kernel_end: usize,
-        multiboot_start: usize,
-        multiboot_end: usize,
+        kernel_start: PhysicalAddress,
+        kernel_end: PhysicalAddress,
+        multiboot_start: PhysicalAddress,
+        multiboot_end: PhysicalAddress,
         memory_areas: Iter<'static, MemoryArea>,
     ) -> AreaFrameAllocator {
         let mut allocator = AreaFrameAllocator {
@@ -98,53 +103,15 @@ impl AreaFrameAllocator {
             .clone()
             .filter(|area| {
                 let address = area.end_address() - 1;
-                Frame::from_address(address as usize) >= self.next_free_frame
+                Frame::from_address(address as PhysicalAddress) >= self.next_free_frame
             })
             .min_by_key(|area| area.start_address());
 
         if let Some(area) = self.current_area {
-            let start_frame = Frame::from_address(area.start_address() as usize);
+            let start_frame = Frame::from_address(area.start_address() as PhysicalAddress);
             if self.next_free_frame < start_frame {
                 self.next_free_frame = start_frame;
             }
         }
     }
-}
-
-////////////// UTILS //////////////
-
-crate::sync_wrapper!(
-    FRAME_ALLOCATOR,
-    OnceFrameAllocator,
-    Mutex<AreaFrameAllocator>
-);
-
-pub fn init_frame_alloc() {
-    let boot_info = crate::MULTIBOOT2_INFO
-        .get()
-        .expect("Multiboot info required");
-
-    let memory_map_tag = boot_info.memory_map_tag().expect("Memory map required");
-    let elf_sections = boot_info.elf_sections().expect("Elf sections required");
-
-    let (kernel_start, kernel_end) = elf_sections.fold((usize::MAX, 0), |(start, end), section| {
-        let new_start = start.min(section.start_address() as usize);
-        let new_end = end.max(section.end_address() as usize);
-        (new_start, new_end)
-    });
-
-    let multiboot_start = boot_info.start_address();
-    let multiboot_end = boot_info.end_address();
-
-    let frame_allocator = AreaFrameAllocator::new(
-        kernel_start,
-        kernel_end,
-        multiboot_start,
-        multiboot_end,
-        memory_map_tag.memory_areas().iter(),
-    );
-
-    FRAME_ALLOCATOR
-        .set(Mutex::new(frame_allocator))
-        .expect("Shouldn't be initialised");
 }
