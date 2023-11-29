@@ -4,7 +4,7 @@ use ab_os_bel::{
     dbg,
     framebuffer::{self, BUFFER, VGA_TEST_SLICE},
     io::{inb, outb, PS2_KEYBOARD_IN, PS2_KEYBOARD_OUT},
-    memory::{FRAME_ALLOCATOR, FrameAllocator},
+    memory::{FrameAllocator, FRAME_ALLOCATOR},
     println, serial_dbg, serial_print, MULTIBOOT2_INFO,
 };
 
