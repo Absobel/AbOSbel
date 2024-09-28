@@ -5,18 +5,18 @@ pub struct Feature {
     bit: u8,
 }
 
-// TODO : Make a safe abstraction
-// For now : safe as long as the user (me) is using the constants defined in this file
-pub fn cpu_has_feature(feature: Feature) -> bool {
-    let edx: usize;
-    unsafe {
-        asm!(
-            "cpuid",
-            in("eax") feature.leaf,
-            out("edx") edx,
-        );
+impl Feature {
+    pub fn cpu_has_feature(&self) -> bool {
+        let edx: usize;
+        unsafe {
+            asm!(
+                "cpuid",
+                in("eax") self.leaf,
+                out("edx") edx,
+            );
+        }
+        edx & (1 << self.bit) != 0
     }
-    edx & (1 << feature.bit) != 0
 }
 
 // FEATURES

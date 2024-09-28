@@ -1,29 +1,14 @@
 use core::{arch::asm, ops::RangeInclusive};
 
-use super::utils::{cpu_has_feature, MSR_FEATURE};
+use super::utils::MSR_FEATURE;
 
-// TODO : add safe abstractions
 // TODO : bitflags crate looks perfect for this and i already use it elsewhere ?
 
 ////////////////////////////////
 
-const IA32_MTRRCAP: usize = 0xFE;
-const IA32_MTRR_DEF_TYPE: usize = 0x2FF;
-
 const WC_MEMORY_TYPE: usize = 1;
-
 // TODO : Find this through cpuid or smth
 const ADDRESS_WIDTH: usize = 48;
-
-////////////////////////////////
-
-#[derive(Debug)]
-pub enum MsrError {
-    NoMsrSupport,
-    NoWCTypeSupport,
-    NoFreeMtrPair,
-    ValueExceedsBitRange,
-}
 
 ///////////////////////////////
 
@@ -56,7 +41,6 @@ unsafe fn readmsr(reg: usize, bits: RangeInclusive<usize>) -> usize {
     (byte & mask) >> bits.start()
 }
 
-// TODO : Check that the value is in the range
 unsafe fn writemsr(reg: usize, bits: RangeInclusive<usize>, value: usize) -> Result<(), MsrError> {
     if value >> (bits.end() - bits.start() + 1) != 0 {
         return Err(MsrError::ValueExceedsBitRange);
@@ -70,62 +54,109 @@ unsafe fn writemsr(reg: usize, bits: RangeInclusive<usize>, value: usize) -> Res
 
 ///////////////////////////////
 
-fn has_msr_support() -> bool {
-    cpu_has_feature(MSR_FEATURE)
+#[derive(Debug)]
+pub enum MsrError {
+    NoMsrSupport,
+    NoWCTypeSupport,
+    NoFreeMtrPair,
+    ValueExceedsBitRange,
+}
+trait ConstMsr {
+    const REG: usize;
 }
 
-fn has_wc_type_support() -> bool {
-    unsafe { readmsr(IA32_MTRRCAP, 10..=10) == 1 }
+struct Ia32MtrrCap;
+
+impl ConstMsr for Ia32MtrrCap {
+    const REG: usize = 0xFE;
 }
 
-fn mtrr_pair_reg_nb() -> usize {
-    unsafe { readmsr(IA32_MTRRCAP, 0..=7) }
+impl Ia32MtrrCap {
+    fn has_wc_type_support() -> bool {
+        unsafe { readmsr(Self::REG, 10..=10) == 1 }
+    }
+
+    fn mtrr_pair_reg_nb() -> usize {
+        unsafe { readmsr(Self::REG, 0..=7) }
+    }
 }
 
-fn enable_mtrr() {
-    unsafe {
-        writemsr(IA32_MTRR_DEF_TYPE, 11..=11, 1).unwrap();
+struct Ia32MtrrDefType;
+
+impl ConstMsr for Ia32MtrrDefType {
+    const REG: usize = 0x2FF;
+}
+
+impl Ia32MtrrDefType {
+    fn enable_mtrr() {
+        unsafe {
+            writemsr(Self::REG, 11..=11, 1).unwrap();
+        }
+    }
+}
+
+struct MtrrPhysPair {
+    base: usize,
+}
+
+impl MtrrPhysPair {
+    fn base_reg(&self) -> usize {
+        self.base
+    }
+    fn mask_reg(&self) -> usize {
+        self.base + 1
+    }
+
+    fn free_mtrr_pair() -> Option<MtrrPhysPair> {
+        let mttr_pair_reg_nb = Ia32MtrrCap::mtrr_pair_reg_nb();
+        let mut mttr_pair_reg = None;
+        for i in 0..mttr_pair_reg_nb {
+            let mask_reg = 0x201 + i * 2;
+            let valid_bit = unsafe { readmsr(mask_reg, 11..=11) };
+            if valid_bit == 0 {
+                mttr_pair_reg = Some(MtrrPhysPair { base: mask_reg - 1 });
+                break;
+            }
+        }
+        mttr_pair_reg
+    }
+
+    fn set_memory_type(
+        &self,
+        addr: usize,
+        size: usize,
+        memory_type: usize,
+    ) -> Result<(), MsrError> {
+        // size must be aligned to a boundary of a power of two and not be bigger than NB_PHYSYCAL_ADDRESS_BITS bits
+        let mask = !(size.next_power_of_two() - 1) & ((1 << ADDRESS_WIDTH) - 1);
+
+        // TODO : remove the .unwrap() when getting rid of x86_64
+        x86_64::instructions::interrupts::without_interrupts(move || unsafe {
+            writemsr(self.base_reg(), 12..=(ADDRESS_WIDTH - 1), addr >> 12).unwrap(); // Set the base address
+            writemsr(self.base_reg(), 0..=7, memory_type).unwrap(); // Set the memory type
+            writemsr(self.mask_reg(), 12..=(ADDRESS_WIDTH - 1), mask >> 12).unwrap(); // Set the mask
+            writemsr(self.mask_reg(), 11..=11, 1).unwrap(); // Set the valid bit
+        });
+
+        Ok(())
     }
 }
 
 ///////////////////////////////
 
-fn free_mtrr_pair() -> Option<(usize, usize)> {
-    let mttr_pair_reg_nb = mtrr_pair_reg_nb();
-    let mut mttr_pair_reg = None;
-    for i in 0..mttr_pair_reg_nb {
-        let mask_reg = 0x201 + i * 2;
-        let valid_bit = unsafe { readmsr(mask_reg, 11..=11) };
-        if valid_bit == 0 {
-            mttr_pair_reg = Some((mask_reg - 1, mask_reg));
-            break;
-        }
-    }
-    mttr_pair_reg
-}
-
 // TODO : Think of a better way than .next_power_of_two() to align the size (several MTRRs can be used)
 pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
-    if !has_msr_support() {
+    if !MSR_FEATURE.cpu_has_feature() {
         return Err(MsrError::NoMsrSupport);
     }
-    if !has_wc_type_support() {
+    if !Ia32MtrrCap::has_wc_type_support() {
         return Err(MsrError::NoWCTypeSupport);
     }
 
-    enable_mtrr();
-    
-    // Use the MTTR pair to set the WC memory type to the given address range
-    let (base_reg, mask_reg) = free_mtrr_pair().ok_or(MsrError::NoFreeMtrPair)?;
-    // size must be aligned to a boundary of a power of two and not be bigger than NB_PHYSYCAL_ADDRESS_BITS bits
-    let mask = !(size.next_power_of_two() - 1) & ((1 << ADDRESS_WIDTH) - 1);
+    Ia32MtrrDefType::enable_mtrr();
 
-    x86_64::instructions::interrupts::without_interrupts(move || unsafe {
-        writemsr(base_reg, 12..=(ADDRESS_WIDTH - 1), addr >> 12).unwrap(); // Set the base address
-        writemsr(base_reg, 0..=7, WC_MEMORY_TYPE).unwrap(); // Set the memory type
-        writemsr(mask_reg, 12..=(ADDRESS_WIDTH - 1), mask >> 12).unwrap(); // Set the mask
-        writemsr(mask_reg, 11..=11, 1).unwrap(); // Set the valid bit
-    });
+    let mtrr_phys_pair = MtrrPhysPair::free_mtrr_pair().ok_or(MsrError::NoFreeMtrPair)?;
+    mtrr_phys_pair.set_memory_type(addr, size, WC_MEMORY_TYPE)?;
 
     Ok(())
 }
