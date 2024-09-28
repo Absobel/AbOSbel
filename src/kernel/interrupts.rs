@@ -110,6 +110,7 @@ extern "x86-interrupt" fn invalid_tss_handler(stack_frame: InterruptStackFrame, 
     panic!("EXCEPTION: INVALID TSS\n{:#?}", stack_frame);
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 enum SegmentNotPresentErrorCode {
     SegmentSelectorIndex(u64),
@@ -126,6 +127,7 @@ extern "x86-interrupt" fn segment_not_present_handler(
     );
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 enum StackSegmentFaultErrorCode {
     SegmentAlreadyPresent,
@@ -146,6 +148,7 @@ extern "x86-interrupt" fn stack_segment_fault_handler(
     );
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 enum GeneralProtectionFaultErrorCode {
     NothingInteresting,

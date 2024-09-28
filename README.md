@@ -15,7 +15,7 @@ To build the project and obtain the kernel binary, run `cargo build`. The kernel
 
 To both build and run the project, use `cargo run`. This will create an `.iso` file located at `target/ab-os-bel.iso` and attempt to launch the OS in QEMU. If QEMU is not installed, the OS won't run, but the `.iso` will still be generated. Also the kernel will be copied to `target/ab-os-bel` for convenience.
 
-Note: Ensure you have rustup and cargo installed with the nightly toolchain, along with QEMU for running the OS.
+Note: Ensure you have rustup and cargo installed with the nightly toolchain, along with QEMU for running the OS, the `libisoburn` library and the `mtools` package to create the iso.
 Note 2: Don't bother with `install.sh`, it will just work on my machine
 
 ## Running with Docker

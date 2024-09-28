@@ -2,7 +2,6 @@
 
 use core::fmt::{self, Write};
 
-use crate::x86::set_mtrr_wc;
 use spin::Mutex;
 
 use super::{Buffer, TextBuffer, Writer};
@@ -79,10 +78,11 @@ pub fn init_graphics() {
         .expect("Framebuffer required")
         .expect("Framebuffer required");
 
-    let height = framebuffer_tag.height() as usize;
-    let pitch = framebuffer_tag.pitch() as usize;
-    set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
-
+    // TODO : Causes GPF and is probably not needed
+    // let height = framebuffer_tag.height() as usize;
+    // let pitch = framebuffer_tag.pitch() as usize;
+    // set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
+    
     BUFFER
         .set(Mutex::new(Buffer::new(framebuffer_tag)))
         .expect("Shouldn't be initialised");
