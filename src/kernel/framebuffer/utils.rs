@@ -82,7 +82,7 @@ pub fn init_graphics() {
     // let height = framebuffer_tag.height() as usize;
     // let pitch = framebuffer_tag.pitch() as usize;
     // set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
-    
+
     BUFFER
         .set(Mutex::new(Buffer::new(framebuffer_tag)))
         .expect("Shouldn't be initialised");
