@@ -1,7 +1,5 @@
 {
     "json.schemaDownload.enable": true,
-    "rust.target": "x86_64-unknown-none",
-    "rust-analyzer.checkOnSave.allTargets": false,
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml"
     ]
