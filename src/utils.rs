@@ -1,4 +1,6 @@
-use multiboot2::{BootInformation, BootInformationHeader, MbiLoadError};
+use core::arch::asm;
+
+use multiboot2::{BootInformation, BootInformationHeader, LoadError};
 
 use crate::framebuffer::init_graphics;
 
@@ -37,11 +39,13 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 
 pub fn hlt_loop() -> ! {
     loop {
-        x86_64::instructions::hlt();
+        unsafe {
+            asm!("hlt");
+        }
     }
 }
 
-pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), MbiLoadError> {
+pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), LoadError> {
     MULTIBOOT2_INFO
         .set(BootInformation::load(
             multiboot_info_addr as *const BootInformationHeader,
