@@ -3,7 +3,7 @@ use core::{arch::asm, ops::RangeInclusive};
 use super::utils::{cpu_has_feature, MSR_FEATURE};
 
 // TODO : add safe abstractions
-// bitflags crate looks perfect for this and i already use it elsewhere ?
+// TODO : bitflags crate looks perfect for this and i already use it elsewhere ?
 
 ////////////////////////////////
 
@@ -104,7 +104,7 @@ fn free_mtrr_pair() -> Option<(usize, usize)> {
     mttr_pair_reg
 }
 
-// TODO : Think of a better way than .next_power_of_two() to align the size
+// TODO : Think of a better way than .next_power_of_two() to align the size (several MTRRs can be used)
 pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
     if !has_msr_support() {
         return Err(MsrError::NoMsrSupport);
@@ -114,7 +114,7 @@ pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
     }
 
     enable_mtrr();
-
+    
     // Use the MTTR pair to set the WC memory type to the given address range
     let (base_reg, mask_reg) = free_mtrr_pair().ok_or(MsrError::NoFreeMtrPair)?;
     // size must be aligned to a boundary of a power of two and not be bigger than NB_PHYSYCAL_ADDRESS_BITS bits

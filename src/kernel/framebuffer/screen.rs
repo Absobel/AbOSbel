@@ -31,7 +31,6 @@ impl Buffer {
         let height = framebuffer_tag.height() as usize;
         let pitch = framebuffer_tag.pitch() as usize;
         let bpp = framebuffer_tag.bpp() as usize;
-        core::intrinsics::black_box(bpp); // TODO : ??? Sans ça ça marche pas en mode release somehow
         let len = (height * pitch) / (bpp / 8);
         Buffer {
             max_x: width,
