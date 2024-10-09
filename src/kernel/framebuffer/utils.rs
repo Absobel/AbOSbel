@@ -4,6 +4,8 @@ use core::fmt::{self, Write};
 
 use spin::Mutex;
 
+use crate::x86::without_interrupts;
+
 use super::{Buffer, TextBuffer, Writer};
 
 #[derive(Debug, Clone, Copy)]
@@ -99,7 +101,7 @@ pub fn init_graphics() {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     // Deactivating interrupts to avoid deadlocks
-    x86_64::instructions::interrupts::without_interrupts(|| {
+    without_interrupts(|| {
         WRITER
             .get()
             .expect("Writer required")

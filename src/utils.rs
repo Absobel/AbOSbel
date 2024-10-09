@@ -10,7 +10,7 @@ crate::sync_wrapper!(MULTIBOOT2_INFO, Multiboot2Info, BootInformation<'static>);
 pub fn init(multiboot_info_addr: usize) {
     crate::interrupts::init_idt(); // Initialize the interruptions and the handlers
     crate::gdt::init(); // Initialize the segmentation for interruption stacks
-                        // x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
+    // x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
 
     unsafe { load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
     init_graphics();

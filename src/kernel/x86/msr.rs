@@ -1,6 +1,6 @@
 use core::{arch::asm, ops::RangeInclusive};
 
-use super::utils::MSR_FEATURE;
+use super::{utils::MSR_FEATURE, without_interrupts};
 
 // TODO : bitflags crate looks perfect for this and i already use it elsewhere ?
 
@@ -130,13 +130,13 @@ impl MtrrPhysPair {
         // size must be aligned to a boundary of a power of two and not be bigger than NB_PHYSYCAL_ADDRESS_BITS bits
         let mask = !(size.next_power_of_two() - 1) & ((1 << ADDRESS_WIDTH) - 1);
 
-        // TODO : remove the .unwrap() when getting rid of x86_64
-        x86_64::instructions::interrupts::without_interrupts(move || unsafe {
-            writemsr(self.base_reg(), 12..=(ADDRESS_WIDTH - 1), addr >> 12).unwrap(); // Set the base address
-            writemsr(self.base_reg(), 0..=7, memory_type).unwrap(); // Set the memory type
-            writemsr(self.mask_reg(), 12..=(ADDRESS_WIDTH - 1), mask >> 12).unwrap(); // Set the mask
-            writemsr(self.mask_reg(), 11..=11, 1).unwrap(); // Set the valid bit
-        });
+        without_interrupts(move || unsafe {
+            writemsr(self.base_reg(), 12..=(ADDRESS_WIDTH - 1), addr >> 12)?; // Set the base address
+            writemsr(self.base_reg(), 0..=7, memory_type)?; // Set the memory type
+            writemsr(self.mask_reg(), 12..=(ADDRESS_WIDTH - 1), mask >> 12)?; // Set the mask
+            writemsr(self.mask_reg(), 11..=11, 1)?; // Set the valid bit
+            Ok(())
+        })?;
 
         Ok(())
     }

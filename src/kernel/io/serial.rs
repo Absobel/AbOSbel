@@ -2,6 +2,8 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use uart_16550::SerialPort;
 
+use crate::x86::without_interrupts;
+
 lazy_static! {
     pub static ref SERIAL1: Mutex<SerialPort> = {
         let mut serial_port = unsafe { SerialPort::new(0x3F8) };
@@ -17,7 +19,7 @@ pub fn _serial_print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;
 
     // Deactivating interrupts to avoid deadlocks
-    x86_64::instructions::interrupts::without_interrupts(|| {
+    without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)

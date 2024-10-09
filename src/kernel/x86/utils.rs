@@ -1,5 +1,7 @@
 use core::arch::asm;
 
+// CPUID ///
+
 pub struct Feature {
     leaf: usize,
     bit: u8,
@@ -19,6 +21,19 @@ impl Feature {
     }
 }
 
-// FEATURES
-
 pub const MSR_FEATURE: Feature = Feature { leaf: 1, bit: 12 };
+
+// INTERRUPTS ///
+
+pub fn without_interrupts<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let r: R;
+    unsafe {
+        asm!("cli");
+        r = f();
+        asm!("sti");
+    }
+    r
+}
