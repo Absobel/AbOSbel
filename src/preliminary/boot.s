@@ -146,42 +146,42 @@ set_up_page_tables:
     or eax, 0b11 /* present + writable */
     mov [p4_table + 511*8], eax
 
-    /* map first P3 entry to P2 table */
+    // map first P3 entry to P2 table
     lea eax, [p2_table]
-    or eax, 0b11 /* present + writable */
+    or eax, 0b11 // present + writable 
     mov [p3_table], eax
 
-    /* map second P3 entry to P2 table */
+    // map second P3 entry to P2 table
     lea eax, [p2_table+4096]
-    or eax, 0b11 /* present + writable */
+    or eax, 0b11
     mov [p3_table+8], eax
 
-    /* map third P3 entry to P2 table */
+    // map third P3 entry to P2 table
     lea eax, [p2_table+4096*2]
-    or eax, 0b11 /* present + writable */
+    or eax, 0b11
     mov [p3_table+16], eax
 
-    /* map fourth P3 entry to P2 table */
+    // map fourth P3 entry to P2 table
     lea eax, [p2_table+4096*3]
-    or eax, 0b11 /* present + writable */
+    or eax, 0b11
     mov [p3_table+24], eax
-
+    
     /*
-    ; map 16 P3 entries to P2 tables
-    mov ecx, 0       ; counter variable
+    // map P3_TABLE_NB_ENTRIES P3 entries to P2 tables
+    mov ecx, 0       // counter variable
     .map_p3_table:
-        ; Compute the address of the ecx-th p2_table
-        ; p2_table + 0x1000*ecx
+        // Compute the address of the ecx-th p2_table
+        // p2_table + 0x1000*ecx
         mov eax, ecx
-        shl eax, 12  ; multiply by 0x1000
+        shl eax, 12  // multiply by 0x1000
         add eax, p2_table
 
-        or eax, 0b11                  ; present + writable
-        mov [p3_table + ecx * 8], eax ; map ecx-th entry
+        or eax, 0b11                  // present + writable
+        mov [p3_table + ecx * 8], eax // map ecx-th entry
 
-        inc ecx            ; increase counter
-        cmp ecx, P3_TABLE_NB_ENTRIES        ; if counter == 16, the whole P3 table is mapped
-        jne .map_p3_table  ; else map the next entry
+        inc ecx            // increase counter
+        cmp ecx, P3_TABLE_NB_ENTRIES        // if counter == P3_TABLE_NB_ENTRIES, the whole P3 table is mapped
+        jne .map_p3_table  // else map the next entry
     */
 
     /* map each P2 entry to a huge 2MiB page */
