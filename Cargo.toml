@@ -1,30 +1,17 @@
+cargo-features = ["edition2024"]
+
 [package]
 name = "ab-os-bel"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 bitflags = "2.6.0"
 const_field_count = "0.1.0"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
-multiboot2 = { version = "0.23.0", default-features = false, features = ["unstable"] }
+multiboot2 = { version = "0.23.1", default-features = false, features = ["unstable"] }
 spin = "0.9.8"
-uart_16550 = "0.3.1"
-x86_64 = "0.14.10"
+uart_16550 = "0.3.2"
 
 [profile.release] # TODO : remove this one day
 debug = true
-
-# No harness tests
-
-[[test]]
-name = "should_panic_template"
-harness = false
-
-[[test]]
-name = "stack_overflow"
-harness = false
-
-[[test]]
-name = "page_fault"
-harness = false

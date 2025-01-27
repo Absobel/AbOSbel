@@ -12,7 +12,6 @@ dependencies = [
  "multiboot2",
  "spin",
  "uart_16550",
- "x86_64",
 ]
 
 [[package]]
@@ -97,9 +96,9 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
 name = "multiboot2"
-version = "0.23.0"
+version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8bcd36c1256cbfbabbd8da34d487a64b45bea009a869185708735951792f0f3"
+checksum = "43fcee184de68e344a888bc4f2b9d6b2f2f527cae8cedbb4d62a4df727d1ceae"
 dependencies = [
  "bitflags 2.6.0",
  "derive_more",
@@ -211,9 +210,9 @@ dependencies = [
 
 [[package]]
 name = "uart_16550"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4922792855b1bce30997fbaa5418597902c278a92d20dfe348e6f062c3bd861d"
+checksum = "e492212ac378a5e00da953718dafb1340d9fbaf4f27d6f3c5cab03d931d1c049"
 dependencies = [
  "bitflags 2.6.0",
  "rustversion",
@@ -250,12 +249,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
-name = "volatile"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "442887c63f2c839b346c192d047a7c87e73d0689c9157b00b53dcc27dd5ea793"
-
-[[package]]
 name = "x86"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -264,16 +257,4 @@ dependencies = [
  "bit_field",
  "bitflags 1.3.2",
  "raw-cpuid",
-]
-
-[[package]]
-name = "x86_64"
-version = "0.14.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96cb6fd45bfeab6a5055c5bffdb08768bd0c069f1d946debe585bbb380a7c062"
-dependencies = [
- "bit_field",
- "bitflags 2.6.0",
- "rustversion",
- "volatile",
 ]

@@ -2,37 +2,19 @@ use core::arch::asm;
 
 use multiboot2::{BootInformation, BootInformationHeader, LoadError};
 
-use crate::framebuffer::init_graphics;
+use crate::{framebuffer::init_graphics, serial_println};
 
 crate::sync_wrapper!(MULTIBOOT2_INFO, Multiboot2Info, BootInformation<'static>);
 
 // INITIALIZATION
-pub fn init(multiboot_info_addr: usize) {
+pub fn init(multiboot_info_addr: usize) { 
+    serial_println!("Initializing ab_os_bel...");   
     crate::interrupts::init_idt(); // Initialize the interruptions and the handlers
-    crate::gdt::init(); // Initialize the segmentation for interruption stacks
-    // x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
+    // crate::gdt::init(); // Initialize the segmentation for interruption stacks
+                        // x86_64::instructions::interrupts::enable(); // Enable hardware interruptions
 
     unsafe { load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
     init_graphics();
-}
-
-// QEMU EXIT CODE
-
-#[derive(Clone, Copy)]
-#[repr(u32)]
-pub enum QemuExitCode {
-    Success = 0x10,
-    Failed = 0x11,
-}
-
-pub fn exit_qemu(exit_code: QemuExitCode) {
-    use x86_64::instructions::port::Port;
-
-    let mut port = Port::new(0xf4);
-
-    unsafe {
-        port.write(exit_code as u32);
-    }
 }
 
 // OTHER
@@ -46,11 +28,13 @@ pub fn hlt_loop() -> ! {
 }
 
 pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), LoadError> {
-    MULTIBOOT2_INFO
-        .set(BootInformation::load(
-            multiboot_info_addr as *const BootInformationHeader,
-        )?)
-        .expect("Shouldn't be initialized");
+    unsafe {
+        MULTIBOOT2_INFO
+            .set(BootInformation::load(
+                multiboot_info_addr as *const BootInformationHeader,
+            )?)
+            .expect("Shouldn't be initialized");
+    }
     Ok(())
 }
 
