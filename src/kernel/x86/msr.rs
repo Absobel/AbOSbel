@@ -15,28 +15,28 @@ const ADDRESS_WIDTH: usize = 48;
 unsafe fn readmsr_byte(reg: usize) -> usize {
     let (eax, edx): (u32, u32);
 
-    asm!(
+    unsafe{asm!(
         "rdmsr",
         in("ecx") reg,
         out("eax") eax,
         out("edx") edx,
-    );
+    )};
     ((edx as usize) << 32) | eax as usize
 }
 
 unsafe fn writemsr_byte(reg: usize, value: usize) {
     let eax = value as u32;
     let edx = (value >> 32) as u32;
-    asm!(
+    unsafe{asm!(
         "wrmsr",
         in("ecx") reg,
         in("eax") eax,
         in("edx") edx,
-    );
+    )};
 }
 
 unsafe fn readmsr(reg: usize, bits: RangeInclusive<usize>) -> usize {
-    let byte = readmsr_byte(reg);
+    let byte = unsafe{readmsr_byte(reg)};
     let mask = (1 << (bits.end() + 1)) - (1 << bits.start());
     (byte & mask) >> bits.start()
 }
@@ -45,10 +45,10 @@ unsafe fn writemsr(reg: usize, bits: RangeInclusive<usize>, value: usize) -> Res
     if value >> (bits.end() - bits.start() + 1) != 0 {
         return Err(MsrError::ValueExceedsBitRange);
     }
-    let byte = readmsr_byte(reg);
+    let byte = unsafe {readmsr_byte(reg)};
     let mask = (1 << (bits.end() + 1)) - (1 << bits.start());
     let new_byte = (byte & !mask) | ((value << bits.start()) & mask);
-    writemsr_byte(reg, new_byte);
+    unsafe{writemsr_byte(reg, new_byte)};
     Ok(())
 }
 

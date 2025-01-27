@@ -1,10 +1,7 @@
 #![allow(dead_code, unused_variables, unused_imports)]
 
 use ab_os_bel::{
-    dbg,
-    framebuffer::{self, BUFFER, VGA_TEST_SLICE},
-    io::{inb, outb, PS2_KEYBOARD_IN, PS2_KEYBOARD_OUT},
-    println, serial_dbg, serial_print, MULTIBOOT2_INFO,
+    dbg, framebuffer::{self, BUFFER, VGA_TEST_SLICE}, hlt_loop, io::{inb, outb, PS2_KEYBOARD_IN, PS2_KEYBOARD_OUT}, println, serial_dbg, serial_print, serial_println, MULTIBOOT2_INFO
 };
 
 pub fn main() {

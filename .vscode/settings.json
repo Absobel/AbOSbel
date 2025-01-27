@@ -2,5 +2,7 @@
     "json.schemaDownload.enable": true,
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml"
-    ]
+    ],
+    "rust-analyzer.cargo.target": "./x86_64-abosbel-none.json",
+    "rust-analyzer.cargo.allTargets": false
 }

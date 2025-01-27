@@ -135,7 +135,6 @@ error:
 .SET P4_TABLE_NB_ENTRIES, NB_P3_TABLES
 
 /* TODO : Reduce this part when paging will be dynamic */
-
 set_up_page_tables:
     /* map first P4 entry to P3 table */
     lea eax, [p3_table]
@@ -251,6 +250,7 @@ long_mode_start:
     call main
 
     /* Shouldn't ever reach here */
+    call error
     cli
     hlt
 
