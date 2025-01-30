@@ -100,8 +100,6 @@ static mut GDT: Gdt = {
 
 static mut TSS: TaskStateSegment = TaskStateSegment::empty();
 
-pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
-
 unsafe fn reload_cs() {
     unsafe{asm!(
         "mov ax, 0x10",
@@ -117,7 +115,6 @@ pub fn init() {
     crate::x86::without_interrupts(|| unsafe {
         // compile_error!("TODO : Implement GDT init");
 
-        
         let tss_ptr = &raw const TSS as u64;
         #[allow(static_mut_refs)] // TODO : do that better
         GDT.change_tss_base(tss_ptr);

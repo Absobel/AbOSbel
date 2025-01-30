@@ -1,5 +1,6 @@
 // Access Byte for an entry in the GDT
 // TODO : Enums or const for the flags or smth
+// REWRITE FUCKING EVERYTHING
 
 /// Normal Descriptor Access Byte
 pub struct GdtNormalAccess {
