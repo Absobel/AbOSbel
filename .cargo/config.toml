@@ -6,4 +6,4 @@ build-std-features = ["compiler-builtins-mem"]
 target = "x86_64-abosbel-none.json"
 
 [target.'cfg(target_os = "none")']
-runner = "./start.sh"
+runner = "./scripts/start.sh"
