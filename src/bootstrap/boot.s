@@ -3,6 +3,7 @@
  * and then calls the main function of the kernel.
 */
 
+.intel_syntax noprefix
 .section .text
 .global _start
 .extern long_mode_start
@@ -28,7 +29,7 @@ _start:
     /* load the 64-bit GDT */
     lgdt [gdt64_pointer]
 
-    ljmp 0x8, offset long_mode_start /* TODO should not be hardcoded but should be set to GDT64_CODE but doesn't work so... */
+    ljmp GDT64_CODE, offset long_mode_start
     
     /* Shouldn't ever reach here */
     cli
@@ -136,60 +137,37 @@ error:
 
 /* TODO : Reduce this part when paging will be dynamic */
 set_up_page_tables:
-    /* map first P4 entry to P3 table */
+    # map first P4 entry to P3 table
     lea eax, [p3_table]
-    or eax, 0b11 /* present + writable */
+    or eax, 0b11 # present + writable
     mov [p4_table], eax
 
+    # make the last P4 entry point to the P4 table itself
     lea eax, p4_table
-    or eax, 0b11 /* present + writable */
+    or eax, 0b11 # present + writable 
     mov [p4_table + 511*8], eax
-
-    // map first P3 entry to P2 table
-    lea eax, [p2_table]
-    or eax, 0b11 // present + writable 
-    mov [p3_table], eax
-
-    // map second P3 entry to P2 table
-    lea eax, [p2_table+4096]
-    or eax, 0b11
-    mov [p3_table+8], eax
-
-    // map third P3 entry to P2 table
-    lea eax, [p2_table+4096*2]
-    or eax, 0b11
-    mov [p3_table+16], eax
-
-    // map fourth P3 entry to P2 table
-    lea eax, [p2_table+4096*3]
-    or eax, 0b11
-    mov [p3_table+24], eax
-    
-    /*
-    // map P3_TABLE_NB_ENTRIES P3 entries to P2 tables
-    mov ecx, 0       // counter variable
+   
+    # map P3_TABLE_NB_ENTRIES P3 entries to P2 tables
+    mov ecx, 0       # counter variable
     .map_p3_table:
-        // Compute the address of the ecx-th p2_table
-        // p2_table + 0x1000*ecx
-        mov eax, ecx
-        shl eax, 12  // multiply by 0x1000
-        add eax, p2_table
+        # Compute the address of the ecx-th p2_table
+        # p2_table + 0x1000*ecx
+        imul eax, ecx, 0x1000
+        lea eax, [p2_table + eax]
 
-        or eax, 0b11                  // present + writable
-        mov [p3_table + ecx * 8], eax // map ecx-th entry
+        or eax, 0b11                  # present + writable
+        mov [p3_table + ecx * 8], eax # map ecx-th entry
 
-        inc ecx            // increase counter
-        cmp ecx, P3_TABLE_NB_ENTRIES        // if counter == P3_TABLE_NB_ENTRIES, the whole P3 table is mapped
-        jne .map_p3_table  // else map the next entry
-    */
+        inc ecx            # increase counter
+        cmp ecx, P3_TABLE_NB_ENTRIES        # if counter == P3_TABLE_NB_ENTRIES, the whole P3 table is mapped
+        jne .map_p3_table  # else map the next entry
 
     /* map each P2 entry to a huge 2MiB page */
     mov ecx, 0         /* counter variable */
     .map_p2_table:
         /* map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx */
         /* 0x200000*ecx */
-        mov eax, ecx
-        shl eax, 21  /* multiply by 0x200000 */
+        imul eax, ecx, 0x200000
 
         or eax, 0b10000011 /* present + writable + huge */
         mov [p2_table + ecx * 8], eax /* map ecx-th entry */

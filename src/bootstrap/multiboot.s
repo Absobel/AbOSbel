@@ -1,3 +1,5 @@
+.intel_syntax noprefix
+
 .SET MAGIC, 0xE85250D6
 .SET ARCH_I386, 0
 .SET HEADER_LENGTH, header_end - header_start
