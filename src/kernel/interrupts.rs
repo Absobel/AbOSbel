@@ -9,156 +9,156 @@ lazy_static! {
     static ref sIDT: Idt = {
         // HANDLERS
 
-// 0x00: Division by Zero
-extern "x86-interrupt" fn divide_error_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("DIVISION ERROR at address {:#x}", stack_frame.rip);
-}
+        // 0x00: Division by Zero
+        extern "x86-interrupt" fn divide_error_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("DIVISION ERROR at address {:#x}", stack_frame.rip);
+        }
 
-// 0x01: Debug Exception
-extern "x86-interrupt" fn debug_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("DEBUG EXCEPTION at address {:#x}", stack_frame.rip);
-}
+        // 0x01: Debug Exception
+        extern "x86-interrupt" fn debug_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("DEBUG EXCEPTION at address {:#x}", stack_frame.rip);
+        }
 
-// 0x02: Non-Maskable Interrupt
-extern "x86-interrupt" fn nmi_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("NON-MASKABLE INTERRUPT at address {:#x}", stack_frame.rip);
-}
+        // 0x02: Non-Maskable Interrupt
+        extern "x86-interrupt" fn nmi_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("NON-MASKABLE INTERRUPT at address {:#x}", stack_frame.rip);
+        }
 
-// 0x03: Breakpoint
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    panic!("BREAKPOINT at address {:#x}", stack_frame.rip);
-}
+        // 0x03: Breakpoint
+        extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
+            panic!("BREAKPOINT at address {:#x}", stack_frame.rip);
+        }
 
-// 0x04: Overflow
-extern "x86-interrupt" fn overflow_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("OVERFLOW at address {:#x}", stack_frame.rip);
-}
+        // 0x04: Overflow
+        extern "x86-interrupt" fn overflow_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("OVERFLOW at address {:#x}", stack_frame.rip);
+        }
 
-// 0x05: Bound Range Exceeded
-extern "x86-interrupt" fn bound_range_exceeded_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("BOUND RANGE EXCEEDED at address {:#x}", stack_frame.rip);
-}
+        // 0x05: Bound Range Exceeded
+        extern "x86-interrupt" fn bound_range_exceeded_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("BOUND RANGE EXCEEDED at address {:#x}", stack_frame.rip);
+        }
 
-// 0x06: Invalid Opcode
-extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("INVALID OPCODE at address {:#x}", stack_frame.rip);
-}
+        // 0x06: Invalid Opcode
+        extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("INVALID OPCODE at address {:#x}", stack_frame.rip);
+        }
 
-// 0x07: Device Not Available
-extern "x86-interrupt" fn device_not_available_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("DEVICE NOT AVAILABLE at address {:#x}", stack_frame.rip);
-}
+        // 0x07: Device Not Available
+        extern "x86-interrupt" fn device_not_available_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("DEVICE NOT AVAILABLE at address {:#x}", stack_frame.rip);
+        }
 
-// 0x08: Double Fault
-extern "x86-interrupt" fn double_fault_handler(
-    stack_frame: InterruptStackFrame,
-    error_code: u64,
-) -> ! {
-    panic!(
-        "DOUBLE FAULT at address {:#x} with error code: {}",
-        stack_frame.rip, error_code
-    );
-}
+        // 0x08: Double Fault
+        extern "x86-interrupt" fn double_fault_handler(
+            stack_frame: InterruptStackFrame,
+            error_code: u64,
+        ) -> ! {
+            panic!(
+                "DOUBLE FAULT at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
+        }
 
-// 0x0A: Invalid TSS
-extern "x86-interrupt" fn invalid_tss_handler(
-    stack_frame: InterruptStackFrame,
-    error_code: u64,
-) -> ! {
-    panic!(
-        "INVALID TSS at address {:#x} with error code: {}",
-        stack_frame.rip, error_code
-    );
-}
+        // 0x0A: Invalid TSS
+        extern "x86-interrupt" fn invalid_tss_handler(
+            stack_frame: InterruptStackFrame,
+            error_code: u64,
+        ) -> ! {
+            panic!(
+                "INVALID TSS at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
+        }
 
-// 0x0B: Segment Not Present
-extern "x86-interrupt" fn segment_not_present_handler(
-    stack_frame: InterruptStackFrame,
-    error_code: u64,
-) -> ! {
-    panic!(
-        "SEGMENT NOT PRESENT at address {:#x} with error code: {}",
-        stack_frame.rip, error_code
-    );
-}
+        // 0x0B: Segment Not Present
+        extern "x86-interrupt" fn segment_not_present_handler(
+            stack_frame: InterruptStackFrame,
+            error_code: u64,
+        ) -> ! {
+            panic!(
+                "SEGMENT NOT PRESENT at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
+        }
 
-// 0x0C: Stack Segment Fault
-extern "x86-interrupt" fn stack_segment_fault_handler(
-    stack_frame: InterruptStackFrame,
-    error_code: u64,
-) -> ! {
-    panic!(
-        "STACK SEGMENT FAULT at address {:#x} with error code: {}",
-        stack_frame.rip, error_code
-    );
-}
+        // 0x0C: Stack Segment Fault
+        extern "x86-interrupt" fn stack_segment_fault_handler(
+            stack_frame: InterruptStackFrame,
+            error_code: u64,
+        ) -> ! {
+            panic!(
+                "STACK SEGMENT FAULT at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
+        }
 
-// 0x0D: General Protection Fault
-extern "x86-interrupt" fn general_protection_fault_handler(
-    stack_frame: InterruptStackFrame,
-    error_code: u64,
-) -> ! {
-    panic!(
-        "GENERAL PROTECTION FAULT at address {:#x} with error code: {}",
-        stack_frame.rip, error_code
-    );
-}
+        // 0x0D: General Protection Fault
+        extern "x86-interrupt" fn general_protection_fault_handler(
+            stack_frame: InterruptStackFrame,
+            error_code: u64,
+        ) -> ! {
+            panic!(
+                "GENERAL PROTECTION FAULT at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
+        }
 
-// 0x0E: Page Fault
-extern "x86-interrupt" fn page_fault_handler(
-    stack_frame: InterruptStackFrame,
-    // error_code: u64,
-) -> ! {
-    panic!("PAGE FAULT at address {:#x}", stack_frame.rip);
-}
+        // 0x0E: Page Fault
+        extern "x86-interrupt" fn page_fault_handler(
+            stack_frame: InterruptStackFrame,
+            // error_code: u64,
+        ) -> ! {
+            panic!("PAGE FAULT at address {:#x}", stack_frame.rip);
+        }
 
-// 0x10: x87 Floating Point Exception
-extern "x86-interrupt" fn x87_floating_point_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!(
-        "x87 FLOATING POINT EXCEPTION at address {:#x}",
-        stack_frame.rip
-    );
-}
+        // 0x10: x87 Floating Point Exception
+        extern "x86-interrupt" fn x87_floating_point_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!(
+                "x87 FLOATING POINT EXCEPTION at address {:#x}",
+                stack_frame.rip
+            );
+        }
 
-// 0x11: Alignment Check
-extern "x86-interrupt" fn alignment_check_handler(
-    stack_frame: InterruptStackFrame,
-    error_code: u64,
-) -> ! {
-    panic!(
-        "ALIGNMENT CHECK at address {:#x} with error code: {}",
-        stack_frame.rip, error_code
-    );
-}
+        // 0x11: Alignment Check
+        extern "x86-interrupt" fn alignment_check_handler(
+            stack_frame: InterruptStackFrame,
+            error_code: u64,
+        ) -> ! {
+            panic!(
+                "ALIGNMENT CHECK at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
+        }
 
-// 0x12: Machine Check
-extern "x86-interrupt" fn machine_check_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("MACHINE CHECK at address {:#x}", stack_frame.rip);
-}
+        // 0x12: Machine Check
+        extern "x86-interrupt" fn machine_check_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("MACHINE CHECK at address {:#x}", stack_frame.rip);
+        }
 
-// 0x13: SIMD Floating Point Exception
-extern "x86-interrupt" fn simd_floating_point_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!(
-        "SIMD FLOATING POINT EXCEPTION at address {:#x}",
-        stack_frame.rip
-    );
-}
+        // 0x13: SIMD Floating Point Exception
+        extern "x86-interrupt" fn simd_floating_point_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!(
+                "SIMD FLOATING POINT EXCEPTION at address {:#x}",
+                stack_frame.rip
+            );
+        }
 
-// 0x14: Virtualization Exception
-extern "x86-interrupt" fn virtualization_handler(stack_frame: InterruptStackFrame) -> ! {
-    panic!("VIRTUALIZATION EXCEPTION at address {:#x}", stack_frame.rip);
-}
+        // 0x14: Virtualization Exception
+        extern "x86-interrupt" fn virtualization_handler(stack_frame: InterruptStackFrame) -> ! {
+            panic!("VIRTUALIZATION EXCEPTION at address {:#x}", stack_frame.rip);
+        }
 
-// 0x15: Control Protection Exception
-extern "x86-interrupt" fn control_protection_handler(
-    stack_frame: InterruptStackFrame,
-    error_code: u64,
-) -> ! {
-    panic!(
-        "CONTROL PROTECTION EXCEPTION at address {:#x} with error code: {}",
-        stack_frame.rip, error_code
-    );
-}
+        // 0x15: Control Protection Exception
+        extern "x86-interrupt" fn control_protection_handler(
+            stack_frame: InterruptStackFrame,
+            error_code: u64,
+        ) -> ! {
+            panic!(
+                "CONTROL PROTECTION EXCEPTION at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
+        }
 
 
         let mut idt = IdtArr::new();
