@@ -3,15 +3,13 @@
 use ab_os_bel::{
     MULTIBOOT2_INFO, dbg,
     framebuffer::{self, BUFFER, VGA_TEST_SLICE},
-    hlt_loop,
-    io::{PS2_KEYBOARD_IN, PS2_KEYBOARD_OUT, inb, outb},
     println, serial_dbg, serial_print, serial_println,
 };
 
 pub fn main() {
     let red = framebuffer::Color::new(255, 0, 0, 255); // RGB(255, 0, 0)
     let lavander = framebuffer::Color::new(191, 148, 228, 255); // RGB(191, 148, 228)
-    
+
     let buffer = BUFFER.get().expect("Buffer required");
     buffer.lock().clear(lavander);
 

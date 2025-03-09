@@ -5,12 +5,28 @@
 mod kernel;
 mod utils;
 
-use core::arch::global_asm;
-
 pub use kernel::*;
 pub use utils::*;
+
+use core::arch::global_asm;
+use lazy_static::lazy_static;
+use multiboot2::{BootInformation, BootInformationHeader, LoadError};
+use spin::Once;
 
 // BOOTSTRAP
 
 global_asm!(include_str!("preliminary/multiboot.s"), options(raw));
 global_asm!(include_str!("preliminary/boot.s"), options(raw));
+
+// INITIALIZATION
+
+lazy_static! {
+    pub static ref MULTIBOOT2_INFO: Once<BootInformation<'static>> = Once::new();
+}
+
+pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), LoadError> {
+    let multiboot_info =
+        unsafe { BootInformation::load(multiboot_info_addr as *const BootInformationHeader) }?;
+    MULTIBOOT2_INFO.call_once(|| multiboot_info);
+    Ok(())
+}
