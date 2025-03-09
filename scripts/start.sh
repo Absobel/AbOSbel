@@ -14,7 +14,6 @@ if [[ $2 == "debug" ]]; then
   DEBUG="true"
 fi
 
-
 #### CREATE ISO ####
 
 # VARS
@@ -64,7 +63,7 @@ QEMU_FLAGS+='-vga vmware ' # Allows 32 bpp
 # Settings
 QEMU_FLAGS+='-cdrom target/ab-os-bel.iso '
 QEMU_FLAGS+='-serial stdio ' # Allows printing to console
-QEMU_FLAGS+='-no-reboot ' # If the os reboots, exist instead
+QEMU_FLAGS+='-no-reboot ' # If the os reboots, exit instead
 QEMU_FLAGS+='-cpu host ' # Use the host cpu
 QEMU_FLAGS+='-enable-kvm ' # Enable KVM
 # Tests
@@ -78,7 +77,10 @@ if [[ $DEBUG == "true" ]]; then
   rust-gdb \
     -ex "target remote localhost:1234" \
     -ex "set architecture i386:x86-64" \
-    -ex "hbreak src/kernel/framebuffer/screen.rs:31" \
+    -ex "set print pretty on" \
+    -ex "hbreak src/main.rs:23" \
+    -ex "c" \
+    -ex "layout src" \
     $EXEC_PATH
 fi
 

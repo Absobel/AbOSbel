@@ -2,7 +2,7 @@ use core::fmt;
 
 use spin::MutexGuard;
 
-use super::{Buffer, Color, OutOfBoundsError, BUFFER, TEXT_BUFFER};
+use super::{BUFFER, Buffer, Color, OutOfBoundsError, TEXT_BUFFER};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -58,6 +58,7 @@ impl TextBuffer {
                 self.max_char_y,
             ));
         }
+        let mut buffer = Self::get_buffer();
         for char_pxl_x in 0..VGA_CHAR_SIZE.0 {
             for char_pxl_y in 0..VGA_CHAR_SIZE.1 {
                 let char_pxl = (rect[char_pxl_y] >> (VGA_CHAR_SIZE.0 - 1 - char_pxl_x)) & 1;
@@ -70,7 +71,6 @@ impl TextBuffer {
                     self.char_coord_to_buffer_coord(char_x as isize, char_y as isize);
                 for i in 0..self.scale_factor {
                     for j in 0..self.scale_factor {
-                        let mut buffer = Self::get_buffer();
                         buffer.write(
                             buffer_x as usize + char_pxl_x * self.scale_factor + i,
                             buffer_y as usize + char_pxl_y * self.scale_factor + j,

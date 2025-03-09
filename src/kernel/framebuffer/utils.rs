@@ -2,9 +2,10 @@
 
 use core::fmt::{self, Write};
 
-use spin::Mutex;
+use lazy_static::lazy_static;
+use spin::{Mutex, Once};
 
-use crate::x86::without_interrupts;
+use crate::{MULTIBOOT2_INFO, x86::without_interrupts};
 
 use super::{Buffer, TextBuffer, Writer};
 
@@ -68,12 +69,14 @@ impl SliceOutOfBoundsError {
 
 //////////////////////////////////
 
-crate::sync_wrapper!(BUFFER, FrameBuffer, Mutex<Buffer>);
-crate::sync_wrapper!(TEXT_BUFFER, OnceTextBuffer, Mutex<TextBuffer>);
-crate::sync_wrapper!(WRITER, OnceWriter, Mutex<Writer>);
+lazy_static! {
+    pub static ref BUFFER: Once<Mutex<Buffer>> = Once::new();
+    pub static ref TEXT_BUFFER: Once<Mutex<TextBuffer>> = Once::new();
+    pub static ref WRITER: Once<Mutex<Writer>> = Once::new();
+}
 
 pub fn init_graphics() {
-    let framebuffer_tag = crate::MULTIBOOT2_INFO
+    let framebuffer_tag = MULTIBOOT2_INFO
         .get()
         .expect("Multiboot info required")
         .framebuffer_tag()
@@ -83,19 +86,11 @@ pub fn init_graphics() {
     // TODO : Causes GPF and is probably not needed
     // let height = framebuffer_tag.height() as usize;
     // let pitch = framebuffer_tag.pitch() as usize;
-    // set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
+    // crate::x86::set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
 
-    BUFFER
-        .set(Mutex::new(Buffer::new(framebuffer_tag)))
-        .expect("Shouldn't be initialised");
-
-    TEXT_BUFFER
-        .set(Mutex::new(TextBuffer::new(1)))
-        .expect("Shouldn't be initialised");
-
-    WRITER
-        .set(Mutex::new(Writer::default()))
-        .expect("Shouldn't be initialised");
+    BUFFER.call_once(|| Mutex::new(Buffer::new(framebuffer_tag)));
+    TEXT_BUFFER.call_once(|| Mutex::new(TextBuffer::new(1)));
+    WRITER.call_once(|| Mutex::new(Writer::default()));
 }
 
 #[doc(hidden)]

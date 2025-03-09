@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(abi_x86_interrupt)]
 #![allow(clippy::missing_safety_doc)]
 
 mod kernel;
