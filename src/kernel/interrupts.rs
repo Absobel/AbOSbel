@@ -408,6 +408,7 @@ impl Deref for IdtArr {
     }
 }
 
+// TODO : use bitflags
 #[repr(C, packed)]
 #[derive(Clone, Copy)]
 struct IDTEntry {

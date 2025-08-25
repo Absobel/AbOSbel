@@ -9,7 +9,7 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     
     if !Command::new("as")
-        .args(["--64", "-o", &format!("{}/multiboot.o", out_dir), "src/bootstrap/multiboot.s"])
+        .args(["--64", "-o", &format!("{out_dir}/multiboot.o"), "src/bootstrap/multiboot.s"])
         .status()
         .expect("Failed to execute as command for multiboot.s")
         .success()
@@ -18,7 +18,7 @@ fn main() {
     }
     
     if !Command::new("as")
-        .args(["--64", "-o", &format!("{}/boot.o", out_dir), "src/bootstrap/boot.s"])
+        .args(["--64", "-o", &format!("{out_dir}/boot.o"), "src/bootstrap/boot.s"])
         .status()
         .expect("Failed to execute as command for boot.s")
         .success()
@@ -26,6 +26,6 @@ fn main() {
         panic!("Failed to compile boot.s");
     }
 
-    println!("cargo:rustc-link-arg={}/multiboot.o", out_dir);
-    println!("cargo:rustc-link-arg={}/boot.o", out_dir);
+    println!("cargo:rustc-link-arg={out_dir}/multiboot.o");
+    println!("cargo:rustc-link-arg={out_dir}/boot.o");
 }

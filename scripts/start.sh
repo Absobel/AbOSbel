@@ -74,10 +74,9 @@ qemu-system-x86_64 $QEMU_FLAGS $EXTRA_QEMU_FLAGS &
 qemu_pid=$!
 
 if [[ $DEBUG == "true" ]]; then
-  rust-gdb \
+  gdb \
     -ex "target remote localhost:1234" \
     -ex "set architecture i386:x86-64" \
-    -ex "set print pretty on" \
     -ex "hbreak src/main.rs:23" \
     -ex "c" \
     -ex "layout src" \
