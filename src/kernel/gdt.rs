@@ -57,6 +57,8 @@ pub fn init() {
 
 */
 
+// TODO : use bitflags everywhere
+
 ///// GDT
 
 #[repr(C, packed)]
