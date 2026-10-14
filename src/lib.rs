@@ -8,15 +8,12 @@ mod utils;
 pub use kernel::*;
 pub use utils::*;
 
-use lazy_static::lazy_static;
 use multiboot2::{BootInformation, BootInformationHeader, LoadError};
 use spin::Once;
 
 // INITIALIZATION
 
-lazy_static! {
-    pub static ref MULTIBOOT2_INFO: Once<BootInformation<'static>> = Once::new();
-}
+pub static MULTIBOOT2_INFO: Once<BootInformation<'static>> = Once::new();
 
 pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), LoadError> {
     let multiboot_info =

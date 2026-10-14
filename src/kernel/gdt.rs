@@ -1,25 +1,33 @@
 use core::arch::asm;
 
-use lazy_static::lazy_static;
+use spin::Once;
 
-//// Initialization
+// Initialization
 
-lazy_static! {
-    static ref TSS: TaskStateSegment = {
+static TSS: Once<TaskStateSegment> = Once::new();
+static GDT_ARR: Once<GdtArr> = Once::new();
+static GDT: Once<Gdt> = Once::new();
+
+pub fn init() {
+    let tss: &'static TaskStateSegment = TSS.call_once(|| {
         let mut tss = TaskStateSegment::empty();
         tss.iopb_offset = core::mem::size_of::<TaskStateSegment>() as u16; // essentially disabling IOPB
         tss
-    };
+    });
 
-    static ref sGDT: Gdt = {
-        let mut gdt = GdtArr::new();
-        gdt.tss_descriptor.change_base(&TSS as *const _ as u64);
-        Gdt::new(gdt)
-    };
-}
+    let gdt_arr: &'static GdtArr = GDT_ARR.call_once(|| {
+        let mut gdt_arr = GdtArr::new();
+        gdt_arr.tss_descriptor.change_base(tss as *const _ as u64);
+        gdt_arr
+    });
 
-pub fn init() {
-    sGDT.load();
+    let gdt: &'static Gdt = GDT.call_once(|| {
+        let mut gdt = Gdt::empty();
+        gdt.set_base(gdt_arr);
+        gdt
+    });
+
+    gdt.load();
 }
 
 /*
@@ -68,11 +76,15 @@ struct Gdt {
 }
 
 impl Gdt {
-    fn new(gdt: GdtArr) -> Self {
+    const fn empty() -> Self {
         Gdt {
             limit: (core::mem::size_of::<GdtArr>() - 1) as u16,
-            base: &gdt as *const GdtArr as u64,
+            base: 0,
         }
+    }
+
+    fn set_base(&mut self, gdt_arr: &GdtArr) {
+        self.base = gdt_arr as *const GdtArr as u64;
     }
 
     fn load(&self) {
@@ -91,7 +103,7 @@ struct GdtArr {
 }
 
 impl GdtArr {
-    fn new() -> Self {
+    const fn new() -> Self {
         let kernel_code_descriptor = GdtNormalDescriptor::new(
             0x00400000,
             0x003FFFFF,
