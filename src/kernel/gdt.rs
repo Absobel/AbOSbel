@@ -188,7 +188,7 @@ impl GdtSystemDescriptor {
             _reserved: 0,
             base_very_high: ((base >> 32) & 0xffffffff) as u32,
             base_high: ((base >> 24) & 0xff) as u8,
-            flags_limit_high: ((granularity.value() & 0xf) << 4) & (((limit >> 16) & 0xf) as u8),
+            flags_limit_high: ((granularity.value() & 0xf) << 4) | (((limit >> 16) & 0xf) as u8),
             access: access.value(),
             base_mid: ((base >> 16) & 0xff) as u8,
             base_low: (base & 0xffff) as u16,
