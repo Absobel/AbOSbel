@@ -17,9 +17,9 @@ pub fn main() {
 
     let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
     log_tag(boot_info.framebuffer_tag());
-    log_tag(boot_info.memory_map_tag());
-    log_tag(boot_info.efi_memory_map_tag()); // None idk why
-    log_tag(boot_info.efi_bs_not_exited_tag());
+    // log_tag(boot_info.memory_map_tag());
+    // log_tag(boot_info.efi_memory_map_tag()); 
+    log_tag(boot_info.efi_bs_not_exited_tag()); // None idk why
     log_tag(boot_info.efi_sdt64_tag());
 
     println!("\nEnd of program.");

@@ -7,6 +7,7 @@ use ab_os_bel::{hlt_loop, serial_println};
 
 // INITIALIZATION
 pub fn init(multiboot_info_addr: usize) {
+    ab_os_bel::io::serial::init_serial();
     serial_println!("Initializing ab_os_bel...");
 
     ab_os_bel::gdt::init(); // Initialize the segmentation for interruption stacks

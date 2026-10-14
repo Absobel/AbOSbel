@@ -2,7 +2,6 @@
 
 use core::fmt::{self, Write};
 
-use lazy_static::lazy_static;
 use spin::{Mutex, Once};
 
 use crate::{MULTIBOOT2_INFO, x86::without_interrupts};
@@ -69,11 +68,10 @@ impl SliceOutOfBoundsError {
 
 //////////////////////////////////
 
-lazy_static! {
-    pub static ref BUFFER: Once<Mutex<Buffer>> = Once::new();
-    pub static ref TEXT_BUFFER: Once<Mutex<TextBuffer>> = Once::new();
-    pub static ref WRITER: Once<Mutex<Writer>> = Once::new();
-}
+pub static BUFFER: Once<Mutex<Buffer>> = Once::new();
+pub static TEXT_BUFFER: Once<Mutex<TextBuffer>> = Once::new();
+pub static WRITER: Once<Mutex<Writer>> = Once::new();
+
 
 pub fn init_graphics() {
     let framebuffer_tag = MULTIBOOT2_INFO

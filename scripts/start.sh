@@ -34,11 +34,6 @@ cp ${EXEC_PATH} ${ISO_DIR}/boot/grub/ab-os-bel
 cp grub.cfg ${ISO_DIR}/boot/grub/
 
 mkdir -p ${ISO_DIR}/EFI/BOOT
-# Creates BOOTX64.EFI
-grub-mkstandalone \
-    -O x86_64-efi \
-    -o ${ISO_DIR}/EFI/BOOT/BOOTX64.EFI \
-    boot/grub/grub.cfg
 
 # Creates the iso
 grub-mkrescue -o target/ab-os-bel.iso ${ISO_DIR} > /dev/null 2>&1
@@ -66,6 +61,7 @@ QEMU_FLAGS+='-serial stdio ' # Allows printing to console
 QEMU_FLAGS+='-no-reboot ' # If the os reboots, exit instead
 QEMU_FLAGS+='-cpu host ' # Use the host cpu
 QEMU_FLAGS+='-enable-kvm ' # Enable KVM
+QEMU_FLAGS+='-bios /usr/share/edk2/x64/OVMF.4m.fd ' # Boot with UEFI
 # Tests
 QEMU_FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
 
