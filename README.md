@@ -6,6 +6,10 @@ It boots on UEFI so too bad for the three BIOS users out there
 It only supports 32 bpp framebuffers for now (so 4 bytes per pixel)  
 x86_64 only because I'm not a masochist (at least not for the foreseeable future) (EDIT : funny because building for x86_64 is being a masochist)
 
+## Dependencies
+
+Ensure you have rustup and cargo installed with the nightly toolchain, along with QEMU for running the OS, `xorriso`, the `libisoburn` library and the `mtools` package to create the iso.
+
 ## Installation
 
 To build the project and obtain the kernel binary, run `cargo build`. The kernel binary will be located at `target/x86_64-abosbel-none/release/ab-os-bel` in release mode or `target/x86_64-abosbel-none/debug/ab-os-bel` in debug mode. 
@@ -14,7 +18,6 @@ To both build and run the project, use `cargo run`. This will create an `.iso` f
 
 To debug the project, use `cargo run -- debug`. This will launch QEMU and attach GDB to it. You can setup breakpoints in `scripts/start.sh`
 
-Note: Ensure you have rustup and cargo installed with the nightly toolchain, along with QEMU for running the OS, the `libisoburn` library and the `mtools` package to create the iso.
 Note 2: Don't bother with `scripts/install.sh`, it will just work on my machine
 
 ## Running with Docker
