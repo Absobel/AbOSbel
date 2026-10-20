@@ -36,7 +36,7 @@ cp grub.cfg ${ISO_DIR}/boot/grub/
 mkdir -p ${ISO_DIR}/EFI/BOOT
 
 # Creates the iso
-grub-mkrescue -o target/ab-os-bel.iso ${ISO_DIR} > /dev/null 2>&1
+grub-mkrescue -o target/ab-os-bel.iso ${ISO_DIR}
 
 
 
@@ -51,6 +51,23 @@ if [[ $DEBUG == "true" ]]; then
   EXTRA_QEMU_FLAGS+="-s -S "
 fi
 
+OVMF=""
+for f in \
+  "$OVMF_PATH" \
+  /usr/share/edk2/x64/OVMF.4m.fd \
+  /usr/share/ovmf/OVMF.fd \
+  /usr/share/OVMF/OVMF_CODE_4M.fd \
+  /usr/share/OVMF/OVMF_CODE.fd \
+  /usr/share/edk2/ovmf/OVMF_CODE.fd \
+  /usr/share/qemu/OVMF.fd; do
+  if [[ -n "$f" && -f "$f" ]]; then OVMF="$f"; break; fi
+done
+if [[ -z "$OVMF" ]]; then
+  echo -e "\e[1;31mERROR:\e[0m OVMF not found. Install it or set OVMF_PATH."
+  exit 1
+fi
+
+
 QEMU_FLAGS=''
 # Options
 QEMU_FLAGS+='-m 1G '
@@ -61,7 +78,7 @@ QEMU_FLAGS+='-serial stdio ' # Allows printing to console
 QEMU_FLAGS+='-no-reboot ' # If the os reboots, exit instead
 QEMU_FLAGS+='-cpu host ' # Use the host cpu
 QEMU_FLAGS+='-enable-kvm ' # Enable KVM
-QEMU_FLAGS+='-bios /usr/share/edk2/x64/OVMF.4m.fd ' # Boot with UEFI
+QEMU_FLAGS+="-drive if=pflash,format=raw,readonly=on,file=$OVMF " # Boot with UEFI
 # Tests
 QEMU_FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
 
