@@ -1,5 +1,5 @@
 # Use a specific base image
-FROM debian:bullseye-slim
+  FROM docker.io/library/debian:bookworm-slim
 
 # Metadata as labels
 LABEL maintainer="Absobel" \
@@ -9,20 +9,15 @@ LABEL maintainer="Absobel" \
 # Install basic and required packages
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       git \
-       curl \
-       ca-certificates \
-       qemu-system \
-       gcc \
-       libc6-dev \
-       grub-common \
-       xorriso \
-       grub-pc-bin \
+       git curl ca-certificates \
+       binutils gcc libc6-dev \
+       grub-common grub-efi-amd64-bin grub-pc-bin \
+       xorriso mtools \
+       qemu-system-x86 ovmf \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rust nightly and set it up
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y \
-    && /root/.cargo/bin/rustup override set nightly \
     && /root/.cargo/bin/rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 
 # Clone the repository
