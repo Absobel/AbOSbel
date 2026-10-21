@@ -18,4 +18,3 @@ pub fn hlt_loop() -> ! {
         }
     }
 }
-

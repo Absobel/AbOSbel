@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Makes the script fail at the first sign of error
+set -euo pipefail
 
 ### VARS ###
 
@@ -10,7 +12,7 @@ if [[ $EXEC_PATH != *"ab-os-bel" ]]; then
   TEST="true"
 fi
 DEBUG="false"
-if [[ $2 == "debug" ]]; then
+if [[ ${2:-} == "debug" ]]; then
   DEBUG="true"
 fi
 
@@ -53,7 +55,7 @@ fi
 
 OVMF=""
 for f in \
-  "$OVMF_PATH" \
+  "${OVMF_PATH:-}" \
   /usr/share/edk2/x64/OVMF.4m.fd \
   /usr/share/ovmf/OVMF.fd \
   /usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -96,8 +98,8 @@ if [[ $DEBUG == "true" ]]; then
     $EXEC_PATH
 fi
 
-wait $qemu_pid
-exit_code=$?
+exit_code=0
+wait $qemu_pid || exit_code=$?
 
 if [ $exit_code -eq 33 ]; then
   exit 0

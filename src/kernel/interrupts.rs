@@ -7,6 +7,7 @@ use spin::Once;
 
 static IDT: Once<Idt> = Once::new();
 
+#[expect(clippy::too_many_lines)]
 pub fn init_idt() {
     let idt: &'static Idt = IDT.call_once(|| {
         // HANDLERS
@@ -37,7 +38,9 @@ pub fn init_idt() {
         }
 
         // 0x05: Bound Range Exceeded
-        extern "x86-interrupt" fn bound_range_exceeded_handler(stack_frame: InterruptStackFrame) -> ! {
+        extern "x86-interrupt" fn bound_range_exceeded_handler(
+            stack_frame: InterruptStackFrame,
+        ) -> ! {
             panic!("BOUND RANGE EXCEEDED at address {:#x}", stack_frame.rip);
         }
 
@@ -47,7 +50,9 @@ pub fn init_idt() {
         }
 
         // 0x07: Device Not Available
-        extern "x86-interrupt" fn device_not_available_handler(stack_frame: InterruptStackFrame) -> ! {
+        extern "x86-interrupt" fn device_not_available_handler(
+            stack_frame: InterruptStackFrame,
+        ) -> ! {
             panic!("DEVICE NOT AVAILABLE at address {:#x}", stack_frame.rip);
         }
 
@@ -115,7 +120,9 @@ pub fn init_idt() {
         }
 
         // 0x10: x87 Floating Point Exception
-        extern "x86-interrupt" fn x87_floating_point_handler(stack_frame: InterruptStackFrame) -> ! {
+        extern "x86-interrupt" fn x87_floating_point_handler(
+            stack_frame: InterruptStackFrame,
+        ) -> ! {
             panic!(
                 "x87 FLOATING POINT EXCEPTION at address {:#x}",
                 stack_frame.rip
@@ -139,7 +146,9 @@ pub fn init_idt() {
         }
 
         // 0x13: SIMD Floating Point Exception
-        extern "x86-interrupt" fn simd_floating_point_handler(stack_frame: InterruptStackFrame) -> ! {
+        extern "x86-interrupt" fn simd_floating_point_handler(
+            stack_frame: InterruptStackFrame,
+        ) -> ! {
             panic!(
                 "SIMD FLOATING POINT EXCEPTION at address {:#x}",
                 stack_frame.rip
@@ -162,13 +171,12 @@ pub fn init_idt() {
             );
         }
 
-
         let mut idt = IdtArr::new();
 
         idt.set_entry(
             0x0,
             IDTEntry::new(
-                divide_error_handler as *const() as u64,
+                divide_error_handler as *const () as u64,
                 0x08,
                 0,
                 IDTGateType::InterruptGate,
@@ -177,11 +185,23 @@ pub fn init_idt() {
         );
         idt.set_entry(
             0x1,
-            IDTEntry::new(debug_handler as *const () as u64, 0x08, 0, IDTGateType::InterruptGate, 0),
+            IDTEntry::new(
+                debug_handler as *const () as u64,
+                0x08,
+                0,
+                IDTGateType::InterruptGate,
+                0,
+            ),
         );
         idt.set_entry(
             0x2,
-            IDTEntry::new(nmi_handler as *const () as u64, 0x08, 0, IDTGateType::InterruptGate, 0),
+            IDTEntry::new(
+                nmi_handler as *const () as u64,
+                0x08,
+                0,
+                IDTGateType::InterruptGate,
+                0,
+            ),
         );
         idt.set_entry(
             0x3,
@@ -354,7 +374,7 @@ pub fn init_idt() {
             ),
         );
 
-        Idt::new(idt)
+        Idt::new(&idt)
     });
 
     idt.load();
@@ -370,9 +390,10 @@ struct Idt {
 }
 
 impl Idt {
-    fn new(idt: IdtArr) -> Self {
-        Idt {
-            limit: (idt.len() * core::mem::size_of::<IDTEntry>() - 1) as u16,
+    fn new(idt: &IdtArr) -> Self {
+        Self {
+            limit: (u16::try_from(idt.len() * core::mem::size_of::<IDTEntry>() - 1)
+                .expect("IDT too large")),
             base: idt.as_ptr() as u64,
         }
     }
@@ -389,13 +410,13 @@ struct IdtArr {
 }
 
 impl IdtArr {
-    fn new() -> Self {
-        IdtArr {
+    const fn new() -> Self {
+        Self {
             entries: [IDTEntry::null(); 256],
         }
     }
 
-    fn set_entry(&mut self, index: usize, entry: IDTEntry) {
+    const fn set_entry(&mut self, index: usize, entry: IDTEntry) {
         self.entries[index] = entry;
     }
 }
@@ -427,8 +448,8 @@ impl IDTEntry {
     // ist : interrupt stack table offset
     // gate_type : type of the gate (interrupt or trap)
     // dpl : descriptor privilege level
-    fn new(offset: u64, selector: u16, ist: u8, gate_type: IDTGateType, dpl: u8) -> Self {
-        IDTEntry {
+    const fn new(offset: u64, selector: u16, ist: u8, gate_type: IDTGateType, dpl: u8) -> Self {
+        Self {
             offset_low: offset as u16,
             selector,
             ist,
@@ -439,8 +460,8 @@ impl IDTEntry {
         }
     }
 
-    fn null() -> Self {
-        IDTEntry {
+    const fn null() -> Self {
+        Self {
             offset_low: 0,
             selector: 0,
             ist: 0,

@@ -1,5 +1,6 @@
 use core::arch::asm;
 
+#[must_use]
 pub unsafe fn inb(port: u16) -> u8 {
     let data;
     unsafe { asm!("in al, dx", in("dx") port, out("al") data) };
@@ -10,6 +11,7 @@ pub unsafe fn outb(port: u16, data: u8) {
     unsafe { asm!("out dx, al", in("dx") port, in("al") data) };
 }
 
+#[must_use]
 pub unsafe fn inw(port: u16) -> u16 {
     let data;
     unsafe { asm!("in ax, dx", in("dx") port, out("ax") data) };

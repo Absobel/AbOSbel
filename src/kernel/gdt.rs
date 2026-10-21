@@ -5,7 +5,7 @@ use spin::Once;
 // Initialization
 
 static TSS: Once<TaskStateSegment> = Once::new();
-static GDT_ARR: Once<GdtArr> = Once::new();
+static GDT_ARR: Once<GdtDescriptors> = Once::new();
 static GDT: Once<Gdt> = Once::new();
 
 pub fn init() {
@@ -15,9 +15,9 @@ pub fn init() {
         tss
     });
 
-    let gdt_arr: &'static GdtArr = GDT_ARR.call_once(|| {
-        let mut gdt_arr = GdtArr::new();
-        gdt_arr.tss_descriptor.change_base(tss as *const _ as u64);
+    let gdt_arr: &'static GdtDescriptors = GDT_ARR.call_once(|| {
+        let mut gdt_arr = GdtDescriptors::new();
+        gdt_arr.tss.change_base(core::ptr::from_ref(tss) as u64);
         gdt_arr
     });
 
@@ -77,14 +77,14 @@ struct Gdt {
 
 impl Gdt {
     const fn empty() -> Self {
-        Gdt {
-            limit: (core::mem::size_of::<GdtArr>() - 1) as u16,
+        Self {
+            limit: (core::mem::size_of::<GdtDescriptors>() - 1) as u16,
             base: 0,
         }
     }
 
-    fn set_base(&mut self, gdt_arr: &GdtArr) {
-        self.base = gdt_arr as *const GdtArr as u64;
+    fn set_base(&mut self, gdt_arr: &GdtDescriptors) {
+        self.base = core::ptr::from_ref::<GdtDescriptors>(gdt_arr) as u64;
     }
 
     fn load(&self) {
@@ -95,39 +95,39 @@ impl Gdt {
 }
 
 #[repr(C, packed)]
-struct GdtArr {
-    null_descriptor: GdtNormalDescriptor,
-    kernel_code_descriptor: GdtNormalDescriptor,
-    kernel_data_descriptor: GdtNormalDescriptor,
-    tss_descriptor: GdtSystemDescriptor,
+struct GdtDescriptors {
+    null: GdtNormalDescriptor,
+    kernel_code: GdtNormalDescriptor,
+    kernel_data: GdtNormalDescriptor,
+    tss: GdtSystemDescriptor,
 }
 
-impl GdtArr {
+impl GdtDescriptors {
     const fn new() -> Self {
-        let kernel_code_descriptor = GdtNormalDescriptor::new(
-            0x00400000,
-            0x003FFFFF,
-            GdtNormalAccess::from_u8(0x9A),
-            GdtFlags::from_u8(0xC),
+        let kernel_code = GdtNormalDescriptor::new(
+            0x0040_0000,
+            0x003_FFFFF,
+            &GdtNormalAccess::from_u8(0x9A),
+            &GdtFlags::from_u8(0xC),
         );
-        let kernel_data_descriptor = GdtNormalDescriptor::new(
-            0x00800000,
-            0x003FFFFF,
-            GdtNormalAccess::from_u8(0x92),
-            GdtFlags::from_u8(0xC),
+        let kernel_data = GdtNormalDescriptor::new(
+            0x0080_0000,
+            0x003_FFFFF,
+            &GdtNormalAccess::from_u8(0x92),
+            &GdtFlags::from_u8(0xC),
         );
-        let tss_descriptor = GdtSystemDescriptor::new(
+        let tss = GdtSystemDescriptor::new(
             0, // Base will be changed later
             core::mem::size_of::<GdtSystemDescriptor>() as u32,
-            GdtSystemAccess::from_u8(0x89),
-            GdtFlags::from_u8(0x0),
+            &GdtSystemAccess::from_u8(0x89),
+            &GdtFlags::from_u8(0x0),
         );
 
-        GdtArr {
-            null_descriptor: GdtNormalDescriptor::null_descriptor(),
-            kernel_code_descriptor,
-            kernel_data_descriptor,
-            tss_descriptor,
+        Self {
+            null: GdtNormalDescriptor::null_descriptor(),
+            kernel_code,
+            kernel_data,
+            tss,
         }
     }
 }
@@ -147,8 +147,8 @@ struct GdtNormalDescriptor {
 }
 
 impl GdtNormalDescriptor {
-    const fn new(base: u32, limit: u32, access: GdtNormalAccess, flags: GdtFlags) -> Self {
-        GdtNormalDescriptor {
+    const fn new(base: u32, limit: u32, access: &GdtNormalAccess, flags: &GdtFlags) -> Self {
+        Self {
             base_high: ((base >> 24) & 0xff) as u8,
             flags_limit_high: ((flags.value() & 0xf) << 4) | (((limit >> 16) & 0xf) as u8),
             access: access.value(),
@@ -162,7 +162,7 @@ impl GdtNormalDescriptor {
         Self::new(
             0,
             0,
-            GdtNormalAccess {
+            &GdtNormalAccess {
                 present: false,
                 privilege: 0,
                 descriptor_type: 0,
@@ -171,7 +171,7 @@ impl GdtNormalDescriptor {
                 readable_writable: 0,
                 accessed: false,
             },
-            GdtFlags {
+            &GdtFlags {
                 granularity: 0,
                 size: 0,
                 long_mode_code: 0,
@@ -195,10 +195,10 @@ struct GdtSystemDescriptor {
 }
 
 impl GdtSystemDescriptor {
-    const fn new(base: u64, limit: u32, access: GdtSystemAccess, granularity: GdtFlags) -> Self {
-        GdtSystemDescriptor {
+    const fn new(base: u64, limit: u32, access: &GdtSystemAccess, granularity: &GdtFlags) -> Self {
+        Self {
             _reserved: 0,
-            base_very_high: ((base >> 32) & 0xffffffff) as u32,
+            base_very_high: ((base >> 32) & 0xffff_ffff) as u32,
             base_high: ((base >> 24) & 0xff) as u8,
             flags_limit_high: ((granularity.value() & 0xf) << 4) | (((limit >> 16) & 0xf) as u8),
             access: access.value(),
@@ -208,8 +208,8 @@ impl GdtSystemDescriptor {
         }
     }
 
-    fn change_base(&mut self, base: u64) {
-        self.base_very_high = ((base >> 32) & 0xffffffff) as u32;
+    const fn change_base(&mut self, base: u64) {
+        self.base_very_high = ((base >> 32) & 0xffff_ffff) as u32;
         self.base_high = ((base >> 24) & 0xff) as u8;
         self.base_mid = ((base >> 16) & 0xff) as u8;
         self.base_low = (base & 0xffff) as u16;
@@ -249,7 +249,7 @@ impl GdtNormalAccess {
     }
 
     const fn from_u8(value: u8) -> Self {
-        GdtNormalAccess {
+        Self {
             present: (value & (1 << 7)) != 0,
             privilege: (value >> 5) & 0b11,
             descriptor_type: (value >> 4) & 1,
@@ -284,7 +284,7 @@ impl GdtSystemAccess {
     }
 
     const fn from_u8(value: u8) -> Self {
-        GdtSystemAccess {
+        Self {
             present: (value & (1 << 7)) != 0,
             privilege: (value >> 5) & 0b11,
             descriptor_type: (value >> 4) & 1,
@@ -312,7 +312,7 @@ impl GdtFlags {
     }
 
     const fn from_u8(value: u8) -> Self {
-        GdtFlags {
+        Self {
             granularity: (value >> 3) & 1,
             size: (value >> 2) & 1,
             long_mode_code: (value >> 1) & 1,
@@ -344,7 +344,7 @@ struct TaskStateSegment {
 
 impl TaskStateSegment {
     const fn empty() -> Self {
-        TaskStateSegment {
+        Self {
             _reserved1: 0,
             rsp0: 0,
             rsp1: 0,

@@ -11,3 +11,10 @@ uart_16550 = "0.3.2"
 
 [profile.release] # TODO : remove this one day
 debug = true
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery  = { level = "warn", priority = -1 }
+style    = { level = "warn", priority = -1 }
+
+cast_possible_truncation = "allow"
