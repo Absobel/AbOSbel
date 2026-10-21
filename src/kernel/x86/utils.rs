@@ -8,6 +8,7 @@ pub struct Feature {
 }
 
 impl Feature {
+    #[must_use]
     pub fn cpu_has_feature(&self) -> bool {
         let edx: usize;
         unsafe {

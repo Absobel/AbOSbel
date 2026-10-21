@@ -2,7 +2,7 @@ use core::fmt;
 
 use spin::MutexGuard;
 
-use super::{BUFFER, Buffer, Color, OutOfBoundsError, TEXT_BUFFER};
+use super::{BUFFER, Color, OutOfBoundsError, ScreenBuffer, TEXT_BUFFER};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -15,13 +15,14 @@ pub struct TextBuffer {
 }
 
 impl TextBuffer {
+    #[expect(clippy::missing_panics_doc)]
     pub fn new(scale_factor: usize) -> Self {
         let buffer = BUFFER.get().expect("Buffer required").lock();
         let max_char_x = buffer.max_x() / (VGA_CHAR_SIZE.0 * scale_factor);
         let padding_char_x = (buffer.max_x() % (VGA_CHAR_SIZE.0 * scale_factor)) * VGA_CHAR_SIZE.1;
         let max_char_y = buffer.max_y() / (VGA_CHAR_SIZE.1 * scale_factor);
         let padding_char_y = (buffer.max_y() % (VGA_CHAR_SIZE.1 * scale_factor)) * VGA_CHAR_SIZE.0;
-        TextBuffer {
+        Self {
             max_char_x,
             max_char_y,
             scale_factor,
@@ -30,20 +31,33 @@ impl TextBuffer {
         }
     }
 
-    fn get_buffer() -> MutexGuard<'static, Buffer> {
+    fn get_buffer() -> MutexGuard<'static, ScreenBuffer> {
         BUFFER.get().expect("Buffer required").lock()
     }
 
-    fn char_coord_to_buffer_coord(&self, char_x: isize, char_y: isize) -> (isize, isize) {
-        let real_char_x = char_x * (VGA_CHAR_SIZE.0 * self.scale_factor) as isize;
-        let real_char_y = char_y * (VGA_CHAR_SIZE.1 * self.scale_factor) as isize;
-        (real_char_x, real_char_y)
+    const fn char_size_px(&self) -> (usize, usize) {
+        (
+            VGA_CHAR_SIZE.0 * self.scale_factor,
+            VGA_CHAR_SIZE.1 * self.scale_factor,
+        )
+    }
+
+    const fn char_coord_to_buffer_coord(&self, char_x: usize, char_y: usize) -> (usize, usize) {
+        let (w, h) = self.char_size_px();
+        (char_x * w, char_y * h)
+    }
+
+    #[expect(clippy::similar_names)]
+    const fn char_offset_to_buffer_offset(&self, char_dx: isize, char_dy: isize) -> (isize, isize) {
+        let (w, h) = self.char_size_px();
+        // cast_signed() cause the char size is tiny except if you wanna write letters the size of the planet idk
+        (char_dx * w.cast_signed(), char_dy * h.cast_signed())
     }
 
     // Assumes the slice is of length 16 (16 bytes = 8*16 pixels = char)
     #[allow(clippy::needless_range_loop)]
     fn draw_char_rect(
-        &mut self,
+        &self,
         rect: &[u8],
         char_x: usize,
         char_y: usize,
@@ -67,13 +81,12 @@ impl TextBuffer {
                 } else {
                     foreground_color
                 };
-                let (buffer_x, buffer_y) =
-                    self.char_coord_to_buffer_coord(char_x as isize, char_y as isize);
+                let (buffer_x, buffer_y) = self.char_coord_to_buffer_coord(char_x, char_y);
                 for i in 0..self.scale_factor {
                     for j in 0..self.scale_factor {
                         buffer.write(
-                            buffer_x as usize + char_pxl_x * self.scale_factor + i,
-                            buffer_y as usize + char_pxl_y * self.scale_factor + j,
+                            buffer_x + char_pxl_x * self.scale_factor + i,
+                            buffer_y + char_pxl_y * self.scale_factor + j,
                             color,
                         )?;
                     }
@@ -84,7 +97,7 @@ impl TextBuffer {
     }
 
     fn write_char(
-        &mut self,
+        &self,
         r#char: char,
         char_x: usize,
         char_y: usize,
@@ -101,6 +114,8 @@ impl TextBuffer {
         )
     }
 
+    /// # Errors
+    /// This function will return an error if the text is out of bounds of the buffer.
     pub fn write_str(
         &mut self,
         string: &str,
@@ -116,20 +131,20 @@ impl TextBuffer {
                 char_x = 0;
                 char_y += 1;
             }
-            match char_i {
-                '\n' => {
-                    char_x = 0;
-                    char_y += 1;
-                }
-                _ => {
-                    self.write_char(char_i, char_x, char_y, background_color, foreground_color)?;
-                    char_x += 1;
-                }
+            if char_i == '\n' {
+                char_x = 0;
+                char_y += 1;
+            } else {
+                self.write_char(char_i, char_x, char_y, background_color, foreground_color)?;
+                char_x += 1;
             }
         }
         Ok(())
     }
 
+    /// # Errors
+    /// This function will return an error if the point is out of bounds of the buffer.
+    #[expect(clippy::similar_names)]
     pub fn move_slice_text(
         &mut self,
         char_x: usize,
@@ -138,17 +153,17 @@ impl TextBuffer {
         char_dx: isize,
         char_dy: isize,
     ) -> Result<(), OutOfBoundsError> {
-        let (x, y) = self.char_coord_to_buffer_coord(char_x as isize, char_y as isize);
-        let (dx, dy) = self.char_coord_to_buffer_coord(char_dx, char_dy);
+        let (x, y) = self.char_coord_to_buffer_coord(char_x, char_y);
+        let (dx, dy) = self.char_offset_to_buffer_offset(char_dx, char_dy);
         let padding = self.padding_char_x * text_len / self.max_char_x;
         let len =
             text_len * VGA_CHAR_SIZE.0 * VGA_CHAR_SIZE.1 * self.scale_factor * self.scale_factor
                 + padding;
         let mut buffer = Self::get_buffer();
-        buffer.move_slice(x as usize, y as usize, len, dx, dy)
+        buffer.move_slice(x, y, len, dx, dy)
     }
 
-    fn clear_line(&mut self, y: usize, background_color: Color) -> Result<(), OutOfBoundsError> {
+    fn clear_line(&self, y: usize, background_color: Color) -> Result<(), OutOfBoundsError> {
         for x in 0..self.max_char_x {
             self.write_char(' ', x, y, background_color, background_color)?;
         }
@@ -165,7 +180,7 @@ pub struct Writer {
 
 impl Default for Writer {
     fn default() -> Self {
-        Writer {
+        Self {
             column_position: 0,
             background_code: Color::new(0, 0, 0, 255),
             foreground_code: Color::new(255, 255, 255, 255),
@@ -178,14 +193,16 @@ impl Writer {
         TEXT_BUFFER.get().expect("Text buffer required").lock()
     }
 
-    pub fn change_background_color(&mut self, color: Color) {
+    pub const fn change_background_color(&mut self, color: Color) {
         self.background_code = color;
     }
 
-    pub fn change_foreground_color(&mut self, color: Color) {
+    pub const fn change_foreground_color(&mut self, color: Color) {
         self.foreground_code = color;
     }
 
+    /// # Errors
+    /// This function will return an error if the text is out of bounds of the buffer.
     pub fn write_str(&mut self, string: &str) -> Result<(), OutOfBoundsError> {
         let mut text_buffer = Self::get_text_buffer();
         for char in string.chars() {
@@ -210,7 +227,7 @@ impl Writer {
         Ok(())
     }
 
-    fn clear_line(&mut self, text_buffer: &mut MutexGuard<'_, TextBuffer>) {
+    fn clear_line(&mut self, text_buffer: &MutexGuard<'_, TextBuffer>) {
         let max_char_y = text_buffer.max_char_y;
         text_buffer
             .clear_line(max_char_y - 1, self.background_code)
@@ -246,7 +263,8 @@ fn nth_char(n: usize) -> &'static [u8] {
 }
 
 // TODO : transform this to a BTreeMap once there is a memory allocator
-fn char_to_font_idx(c: char) -> usize {
+#[expect(clippy::too_many_lines, clippy::match_same_arms)]
+const fn char_to_font_idx(c: char) -> usize {
     match c {
         //' ' => 0,
         '☺' => 1,

@@ -21,7 +21,7 @@ unsafe fn readmsr_byte(reg: usize) -> usize {
             in("ecx") reg,
             out("eax") eax,
             out("edx") edx,
-        )
+        );
     };
     ((edx as usize) << 32) | eax as usize
 }
@@ -35,7 +35,7 @@ unsafe fn writemsr_byte(reg: usize, value: usize) {
             in("ecx") reg,
             in("eax") eax,
             in("edx") edx,
-        )
+        );
     };
 }
 
@@ -104,21 +104,21 @@ struct MtrrPhysPair {
 }
 
 impl MtrrPhysPair {
-    fn base_reg(&self) -> usize {
+    const fn base_reg(&self) -> usize {
         self.base
     }
-    fn mask_reg(&self) -> usize {
+    const fn mask_reg(&self) -> usize {
         self.base + 1
     }
 
-    fn free_mtrr_pair() -> Option<MtrrPhysPair> {
+    fn free_mtrr_pair() -> Option<Self> {
         let mttr_pair_reg_nb = Ia32MtrrCap::mtrr_pair_reg_nb();
         let mut mttr_pair_reg = None;
         for i in 0..mttr_pair_reg_nb {
             let mask_reg = 0x201 + i * 2;
             let valid_bit = unsafe { readmsr(mask_reg, 11..=11) };
             if valid_bit == 0 {
-                mttr_pair_reg = Some(MtrrPhysPair { base: mask_reg - 1 });
+                mttr_pair_reg = Some(Self { base: mask_reg - 1 });
                 break;
             }
         }
@@ -149,6 +149,9 @@ impl MtrrPhysPair {
 ///////////////////////////////
 
 // TODO : Think of a better way than .next_power_of_two() to align the size (several MTRRs can be used)
+/// # Errors
+/// * `MsrError::NoMsrSupport` if the CPU does not support MSRs
+/// * `MsrError::NoFreeMtrPair` if there are no free MTRR pairs available
 pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
     if !MSR_FEATURE.cpu_has_feature() {
         return Err(MsrError::NoMsrSupport);

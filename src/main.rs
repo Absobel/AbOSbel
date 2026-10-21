@@ -6,6 +6,9 @@ mod real_main;
 use ab_os_bel::{hlt_loop, serial_println};
 
 // INITIALIZATION
+
+/// # Panics
+/// This function will return an error if the information can't be parsed as multiboot2 information.
 pub fn init(multiboot_info_addr: usize) {
     ab_os_bel::io::serial::init_serial();
     serial_println!("Initializing ab_os_bel...");
