@@ -1,6 +1,6 @@
 use core::{arch::asm, ops::RangeInclusive};
 
-use super::{utils::MSR_FEATURE, without_interrupts};
+use super::{utils::MTTR_FEATURE, without_interrupts};
 
 // TODO : bitflags crate looks perfect for this and i already use it elsewhere ?
 
@@ -153,7 +153,7 @@ impl MtrrPhysPair {
 /// * `MsrError::NoMsrSupport` if the CPU does not support MSRs
 /// * `MsrError::NoFreeMtrPair` if there are no free MTRR pairs available
 pub fn set_mtrr_wc(addr: usize, size: usize) -> Result<(), MsrError> {
-    if !MSR_FEATURE.cpu_has_feature() {
+    if !MTTR_FEATURE.cpu_has_feature() {
         return Err(MsrError::NoMsrSupport);
     }
     if !Ia32MtrrCap::has_wc_type_support() {

@@ -22,7 +22,7 @@ impl Feature {
     }
 }
 
-pub const MSR_FEATURE: Feature = Feature { leaf: 1, bit: 12 };
+pub const MTTR_FEATURE: Feature = Feature { leaf: 1, bit: 12 };
 
 // INTERRUPTS ///
 
@@ -32,9 +32,16 @@ where
 {
     let r: R;
     unsafe {
-        asm!("cli");
+        let rflags: usize;
+        asm!("pushfq; pop {}", out(reg) rflags, options(nomem, preserves_flags));
+        let enabled = rflags & (1 << 9) != 0;
+        if enabled {
+            asm!("cli", options(nostack, preserves_flags));
+        }
         r = f();
-        asm!("sti");
+        if enabled {
+            asm!("sti", options(nostack, preserves_flags));
+        }
     }
     r
 }

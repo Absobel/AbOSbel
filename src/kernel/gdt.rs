@@ -6,7 +6,6 @@ use spin::Once;
 
 static TSS: Once<TaskStateSegment> = Once::new();
 static GDT_ARR: Once<GdtDescriptors> = Once::new();
-static GDT: Once<Gdt> = Once::new();
 
 pub fn init() {
     let tss: &'static TaskStateSegment = TSS.call_once(|| {
@@ -21,49 +20,10 @@ pub fn init() {
         gdt_arr
     });
 
-    let gdt: &'static Gdt = GDT.call_once(|| {
-        let mut gdt = Gdt::empty();
-        gdt.set_base(gdt_arr);
-        gdt
-    });
-
+    let mut gdt = Gdt::empty();
+    gdt.set_base(gdt_arr);
     gdt.load();
 }
-
-/*
-static mut TSS: TaskStateSegment = TaskStateSegment::empty();
-
-unsafe fn reload_cs() {
-    unsafe{asm!(
-        "mov ax, 0x10",
-        "mov ds, ax",
-        "mov es, ax",
-        "mov fs, ax",
-        "mov gs, ax",
-        "mov ss, ax",
-    )}
-}
-
-pub fn init() {
-    crate::x86::without_interrupts(|| unsafe {
-        // compile_error!("TODO : Implement GDT init");
-
-        let tss_ptr = &raw const TSS as u64;
-        #[allow(static_mut_refs)] // TODO : do that better
-        GDT.change_tss_base(tss_ptr);
-
-        // Load the GDT
-        asm!(
-            "push 0x08", // TODO : tf is that
-            "lea rax, [rip + {rcs}]",
-            "push rax",
-            "retfq",
-            rcs = sym reload_cs,
-        )
-    })
-}
-
-*/
 
 // TODO : use bitflags everywhere
 
@@ -89,7 +49,25 @@ impl Gdt {
 
     fn load(&self) {
         unsafe {
-            asm!("lgdt [{}]", in(reg) self);
+            // readonly: lgdt only reads the GdtArr through the pointer then just pushes to a register, no writing memory
+            // nostack: lgdt doesn't touch the stack
+            // preserves_flags: no arithmetic
+            asm!("lgdt [{}]", in(reg) self, options(readonly, nostack, preserves_flags));
+            // Reload code segment register
+            asm!(
+                "push 0x08", // Refers to the 8th byte of the GDT, which is the kernel code segment descriptor
+                "lea {tmp}, [rip + 2f]",
+                "push {tmp}",
+                "retfq",
+                "2:",
+                "mov ax, 0x10",
+                "mov ds, ax",
+                "mov es, ax",
+                "mov fs, ax",
+                "mov gs, ax",
+                "mov ss, ax",
+                tmp = out(reg) _,
+            );
         }
     }
 }
@@ -104,21 +82,22 @@ struct GdtDescriptors {
 
 impl GdtDescriptors {
     const fn new() -> Self {
+        // In 64bit mode, base and limit are ignored for data and code segments
         let kernel_code = GdtNormalDescriptor::new(
-            0x0040_0000,
-            0x003_FFFFF,
+            0x0,
+            0x0,
             &GdtNormalAccess::from_u8(0x9A),
-            &GdtFlags::from_u8(0xC),
+            &GdtFlags::from_u8(0b1010),
         );
         let kernel_data = GdtNormalDescriptor::new(
-            0x0080_0000,
-            0x003_FFFFF,
+            0x0,
+            0x0,
             &GdtNormalAccess::from_u8(0x92),
-            &GdtFlags::from_u8(0xC),
+            &GdtFlags::from_u8(0b1000),
         );
         let tss = GdtSystemDescriptor::new(
             0, // Base will be changed later
-            core::mem::size_of::<GdtSystemDescriptor>() as u32,
+            core::mem::size_of::<TaskStateSegment>() as u32 - 1,
             &GdtSystemAccess::from_u8(0x89),
             &GdtFlags::from_u8(0x0),
         );
