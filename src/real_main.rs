@@ -23,9 +23,10 @@ pub fn main() {
     // log_tag(boot_info.efi_memory_map_tag());
     // log_tag(boot_info.efi_sdt64_tag());
 
-    // let a = 3.4;
-    // let b = 2.1;
-    // println!("a = {}, b = {}, a + b = {}", a, b, a + b);
+    // division_by_zero();
+
+    let test = alloc::boxed::Box::new(42);
+    println!("Boxed value: {:?}", test);
 
     println!("\nEnd of program.");
 }
@@ -35,4 +36,16 @@ fn log_tag<T: core::fmt::Debug>(tag: T) {
     serial_print!("\n\n");
     dbg!(&tag);
     println!("\n\n");
+}
+
+fn division_by_zero() {
+    unsafe {
+        asm!(
+            "xor edx, edx",
+            "xor ecx, ecx",
+            "div ecx",
+            out("eax") _, out("edx") _, out("ecx") _,
+            options(nomem, nostack),
+        );
+    }
 }

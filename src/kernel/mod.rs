@@ -3,3 +3,4 @@ pub mod gdt;
 pub mod interrupts;
 pub mod io;
 pub mod x86;
+pub mod allocator;
