@@ -2,6 +2,8 @@
 #![feature(abi_x86_interrupt)]
 #![allow(clippy::missing_safety_doc)]
 
+extern crate alloc;
+
 mod kernel;
 mod utils;
 

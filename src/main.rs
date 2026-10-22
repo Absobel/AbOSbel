@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 mod real_main;
 
 use ab_os_bel::{hlt_loop, serial_println};
