@@ -1,5 +1,7 @@
 #![allow(dead_code, unused_variables, unused_imports)]
 
+use core::arch::asm;
+
 use ab_os_bel::{
     MULTIBOOT2_INFO, dbg,
     framebuffer::{self, BUFFER, VGA_TEST_SLICE},
@@ -15,12 +17,15 @@ pub fn main() {
 
     println!("{}\n", VGA_TEST_SLICE);
 
-    let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
-    log_tag(boot_info.framebuffer_tag());
+    // let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
+    // log_tag(boot_info.framebuffer_tag());
     // log_tag(boot_info.memory_map_tag());
     // log_tag(boot_info.efi_memory_map_tag());
-    log_tag(boot_info.efi_bs_not_exited_tag()); // None idk why
-    log_tag(boot_info.efi_sdt64_tag());
+    // log_tag(boot_info.efi_sdt64_tag());
+
+    // let a = 3.4;
+    // let b = 2.1;
+    // println!("a = {}, b = {}, a + b = {}", a, b, a + b);
 
     println!("\nEnd of program.");
 }

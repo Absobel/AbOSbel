@@ -8,7 +8,7 @@ x86_64 only because I'm not a masochist (at least not for the foreseeable future
 
 ## Dependencies
 
-- `rustup` with the nightly toolchain and the `rust-src` component
+- `rustup`
 - `binutils` (for `as`)
 - GRUB with EFI support, `xorriso` and `mtools` to build the iso
 - QEMU and OVMF (UEFI firmware) to run it

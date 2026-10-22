@@ -3,13 +3,11 @@
 use core::{arch::asm, ops::Deref};
 use spin::Once;
 
-// The fact that this work is truly an example of the might humanity is capable of.
-
-static IDT: Once<Idt> = Once::new();
+static IDT_ARR: Once<IdtArr> = Once::new();
 
 #[expect(clippy::too_many_lines)]
 pub fn init_idt() {
-    let idt: &'static Idt = IDT.call_once(|| {
+    let idt_arr: &'static IdtArr = IDT_ARR.call_once(|| {
         // HANDLERS
 
         // 0x00: Division by Zero
@@ -114,9 +112,12 @@ pub fn init_idt() {
         // 0x0E: Page Fault
         extern "x86-interrupt" fn page_fault_handler(
             stack_frame: InterruptStackFrame,
-            // error_code: u64,
+            error_code: u64,
         ) -> ! {
-            panic!("PAGE FAULT at address {:#x}", stack_frame.rip);
+            panic!(
+                "PAGE FAULT at address {:#x} with error code: {}",
+                stack_frame.rip, error_code
+            );
         }
 
         // 0x10: x87 Floating Point Exception
@@ -171,9 +172,9 @@ pub fn init_idt() {
             );
         }
 
-        let mut idt = IdtArr::new();
+        let mut idt_arr = IdtArr::new();
 
-        idt.set_entry(
+        idt_arr.set_entry(
             0x0,
             IDTEntry::new(
                 divide_error_handler as *const () as u64,
@@ -183,7 +184,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x1,
             IDTEntry::new(
                 debug_handler as *const () as u64,
@@ -193,7 +194,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x2,
             IDTEntry::new(
                 nmi_handler as *const () as u64,
@@ -203,7 +204,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x3,
             IDTEntry::new(
                 breakpoint_handler as *const () as u64,
@@ -213,7 +214,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x4,
             IDTEntry::new(
                 overflow_handler as *const () as u64,
@@ -223,7 +224,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x5,
             IDTEntry::new(
                 bound_range_exceeded_handler as *const () as u64,
@@ -233,7 +234,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x6,
             IDTEntry::new(
                 invalid_opcode_handler as *const () as u64,
@@ -243,7 +244,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x7,
             IDTEntry::new(
                 device_not_available_handler as *const () as u64,
@@ -253,7 +254,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x8,
             IDTEntry::new(
                 double_fault_handler as *const () as u64,
@@ -263,7 +264,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0xA,
             IDTEntry::new(
                 invalid_tss_handler as *const () as u64,
@@ -273,7 +274,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0xB,
             IDTEntry::new(
                 segment_not_present_handler as *const () as u64,
@@ -283,7 +284,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0xC,
             IDTEntry::new(
                 stack_segment_fault_handler as *const () as u64,
@@ -293,7 +294,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0xD,
             IDTEntry::new(
                 general_protection_fault_handler as *const () as u64,
@@ -303,7 +304,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0xE,
             IDTEntry::new(
                 page_fault_handler as *const () as u64,
@@ -313,7 +314,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x10,
             IDTEntry::new(
                 x87_floating_point_handler as *const () as u64,
@@ -323,7 +324,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x11,
             IDTEntry::new(
                 alignment_check_handler as *const () as u64,
@@ -333,7 +334,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x12,
             IDTEntry::new(
                 machine_check_handler as *const () as u64,
@@ -343,7 +344,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x13,
             IDTEntry::new(
                 simd_floating_point_handler as *const () as u64,
@@ -353,7 +354,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x14,
             IDTEntry::new(
                 virtualization_handler as *const () as u64,
@@ -363,7 +364,7 @@ pub fn init_idt() {
                 0,
             ),
         );
-        idt.set_entry(
+        idt_arr.set_entry(
             0x15,
             IDTEntry::new(
                 control_protection_handler as *const () as u64,
@@ -374,10 +375,10 @@ pub fn init_idt() {
             ),
         );
 
-        Idt::new(&idt)
+        idt_arr
     });
 
-    idt.load();
+    Idt::new(idt_arr).load();
 }
 
 ///// IDT
