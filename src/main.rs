@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-extern crate alloc;
+// extern crate alloc;
 
 mod real_main;
 
@@ -18,6 +18,7 @@ pub fn init(multiboot_info_addr: usize) {
     ab_os_bel::gdt::init(); // Initialize the segmentation for interruption stacks
     ab_os_bel::interrupts::init_idt(); // Initialize the interruptions and the handlers
     unsafe { ab_os_bel::load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
+    ab_os_bel::allocator::init(); // Initialize the physical memory allocator
     ab_os_bel::framebuffer::init_graphics();
 
     serial_println!("ab_os_bel initialized.");

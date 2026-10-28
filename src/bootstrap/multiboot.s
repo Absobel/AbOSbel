@@ -16,8 +16,7 @@
 .SET HEADER_FRAMEBUFFER_TAG_TYPE, 5
 
 /* MBI TAGS TYPES */
-.SET MBI_EFI_BOOT_SERVICES_TAG_TYPE, 7
-.SET MBI_EFI_SYSTEM_TABLE_TAG_TYPE, 12
+.SET MBI_MEMORY_MAP_TAG_TYPE, 6
 .SET MBI_EFI_MEMORY_MAP_TAG_TYPE, 17
 
 .section .multiboot
@@ -34,8 +33,7 @@ header_start:
         .short TAG_REQUIRED
         .long HEADER_INFORMATION_REQUEST_TAG_SIZE
         /* mbi_tag_types */
-        .long MBI_EFI_BOOT_SERVICES_TAG_TYPE
-        .long MBI_EFI_SYSTEM_TABLE_TAG_TYPE
+        .long MBI_MEMORY_MAP_TAG_TYPE   
         .long MBI_EFI_MEMORY_MAP_TAG_TYPE
     info_request_tag_end:
 

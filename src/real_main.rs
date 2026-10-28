@@ -3,9 +3,11 @@
 use core::arch::asm;
 
 use ab_os_bel::{
-    MULTIBOOT2_INFO, dbg,
+    MULTIBOOT2_INFO,
+    allocator::FRAME_ALLOCATOR,
+    dbg,
     framebuffer::{self, BUFFER, VGA_TEST_SLICE},
-    println, serial_dbg, serial_print, serial_println,
+    kernel_end_addr, println, serial_dbg, serial_print, serial_println,
 };
 
 pub fn main() {
@@ -21,12 +23,8 @@ pub fn main() {
     // log_tag(boot_info.framebuffer_tag());
     // log_tag(boot_info.memory_map_tag());
     // log_tag(boot_info.efi_memory_map_tag());
-    // log_tag(boot_info.efi_sdt64_tag());
 
     // division_by_zero();
-
-    let test = alloc::boxed::Box::new(42);
-    println!("Boxed value: {:?}", test);
 
     println!("\nEnd of program.");
 }

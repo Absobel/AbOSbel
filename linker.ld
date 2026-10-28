@@ -9,7 +9,8 @@ SECTIONS
 	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
 	   loaded at by the bootloader. */
 	. = 1M;
- 
+	kernel_start = .;
+
 	/* First put the multiboot header, as it is required to be put very early
 	   early in the image or the bootloader won't recognize the file format.
 	   Next we'll put the .text section. */
@@ -41,6 +42,9 @@ SECTIONS
 		*(.bss)
         *(.bss.*)
 	}
+
+	. = ALIGN(4K);
+	kernel_end = .;
 
 	/* Debugging information. */
 	.debug_abbrev ALIGN(4K) : { *(.debug_abbrev) }

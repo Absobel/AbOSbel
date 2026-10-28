@@ -1,13 +1,10 @@
 use core::{arch::asm, panic::PanicInfo};
 
-use crate::{framebuffer::WRITER, println, serial_println};
+use crate::println;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    serial_println!("{}", info);
-    if WRITER.get().is_some() {
-        println!("{}", info);
-    }
+    println!("{}", info);
     hlt_loop()
 }
 
@@ -17,4 +14,15 @@ pub fn hlt_loop() -> ! {
             asm!("hlt");
         }
     }
+}
+
+#[must_use]
+pub const fn align_up(addr: usize, align: usize) -> usize {
+    usize::next_multiple_of(addr, align)
+}
+
+#[must_use]
+pub const fn align_down_pow2(addr: usize, align: usize) -> usize {
+    debug_assert!(align.is_power_of_two());
+    addr & !(align - 1)
 }

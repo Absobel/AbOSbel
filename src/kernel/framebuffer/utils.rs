@@ -4,7 +4,7 @@ use core::fmt::{self, Write};
 
 use spin::{Mutex, Once};
 
-use crate::{MULTIBOOT2_INFO, x86::without_interrupts};
+use crate::{MULTIBOOT2_INFO, io::SERIAL1, x86::without_interrupts};
 
 use super::{ScreenBuffer, TextBuffer, Writer};
 
@@ -105,12 +105,15 @@ pub fn init_graphics() {
 pub fn _print(args: fmt::Arguments) {
     // Deactivating interrupts to avoid deadlocks
     without_interrupts(|| {
-        WRITER
-            .get()
-            .expect("Writer required")
+        SERIAL1
             .lock()
             .write_fmt(args)
-            .expect("Printing to Framebuffer failed");
+            .expect("Printing to serial failed");
+        if let Some(w) = WRITER.get() {
+            w.lock()
+                .write_fmt(args)
+                .expect("Printing to Framebuffer failed");
+        }
     });
 }
 
