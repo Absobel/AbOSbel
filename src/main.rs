@@ -5,15 +5,16 @@
 
 mod real_main;
 
-use ab_os_bel::{hlt_loop, serial_println};
+use ab_os_bel::{hlt_loop, println};
 
 // INITIALIZATION
 
 /// # Panics
 /// This function will return an error if the information can't be parsed as multiboot2 information.
 pub fn init(multiboot_info_addr: usize) {
-    ab_os_bel::io::serial::init_serial();
-    serial_println!("Initializing ab_os_bel...");
+    // TODO: Make it so that it gets printed on the screen after the framebuffer is initialized. Useless for this specifically though
+    let _ = ab_os_bel::io::serial::init_serial();
+    println!("Initializing ab_os_bel...");
 
     ab_os_bel::gdt::init(); // Initialize the segmentation for interruption stacks
     ab_os_bel::interrupts::init_idt(); // Initialize the interruptions and the handlers
@@ -21,7 +22,7 @@ pub fn init(multiboot_info_addr: usize) {
     ab_os_bel::allocator::init(); // Initialize the physical memory allocator
     ab_os_bel::framebuffer::init_graphics();
 
-    serial_println!("ab_os_bel initialized.");
+    println!("ab_os_bel initialized.\n");
 }
 
 // MAIN

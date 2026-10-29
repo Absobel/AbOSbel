@@ -105,10 +105,12 @@ pub fn init_graphics() {
 pub fn _print(args: fmt::Arguments) {
     // Deactivating interrupts to avoid deadlocks
     without_interrupts(|| {
-        SERIAL1
-            .lock()
-            .write_fmt(args)
-            .expect("Printing to serial failed");
+        if let Some(serial) = SERIAL1.get() {
+            serial
+                .lock()
+                .write_fmt(args)
+                .expect("Printing to serial failed");
+        }
         if let Some(w) = WRITER.get() {
             w.lock()
                 .write_fmt(args)

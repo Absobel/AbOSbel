@@ -10,7 +10,7 @@ INSTALL_DIR=/boot/abosbel
 # Where the kernel is built
 KERNEL=target/x86_64-abosbel-none/release/ab-os-bel
 
-cargo build --release -q
+cargo build --release
 
 if ! grub-file --is-x86-multiboot2 "$KERNEL"; then
     echo -e "\e[1;31mERROR:\e[0m Kernel is not Multiboot 2 compliant."

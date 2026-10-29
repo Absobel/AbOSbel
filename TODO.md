@@ -11,7 +11,7 @@
 [ ] - tests
     [ ] - unit
     [ ] - integration
-[ ] - Interrupts
+[x] - Interrupts
 [ ] - continue the tutorial
 [ ] - After allocator, rewrite the graphical part and a lot of other things
     [ ] - rewrite buffer into a vec/smth

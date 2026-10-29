@@ -1,12 +1,19 @@
-use spin::Mutex;
-use uart_16550::SerialPort;
+use spin::{Mutex, Once};
 
-use crate::x86::without_interrupts;
+use crate::{
+    io::{LoopbackMismatch, SerialPort},
+    x86::without_interrupts,
+};
 
-pub static SERIAL1: Mutex<SerialPort> = Mutex::new(unsafe { SerialPort::new(0x3F8) });
+pub static SERIAL1: Once<Mutex<SerialPort>> = Once::new();
 
-pub fn init_serial() {
-    SERIAL1.lock().init();
+/// # Errors
+/// This function will return an error if the serial port is faulty/doesn't exist
+pub fn init_serial() -> Result<(), LoopbackMismatch> {
+    let serial_port = unsafe { SerialPort::new(0x3F8) };
+    serial_port.init()?;
+    SERIAL1.call_once(|| Mutex::new(serial_port));
+    Ok(())
 }
 
 // MACROS
@@ -17,10 +24,12 @@ pub fn _serial_print(args: ::core::fmt::Arguments) {
 
     // Deactivating interrupts to avoid deadlocks
     without_interrupts(|| {
-        SERIAL1
-            .lock()
-            .write_fmt(args)
-            .expect("Printing to serial failed");
+        if let Some(serial) = SERIAL1.get() {
+            serial
+                .lock()
+                .write_fmt(args)
+                .expect("Printing to serial failed");
+        }
     });
 }
 
@@ -36,9 +45,8 @@ macro_rules! serial_print {
 #[macro_export]
 macro_rules! serial_println {
     () => ($crate::serial_print!("\n"));
-    ($fmt:expr) => ($crate::serial_print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => ($crate::serial_print!(
-        concat!($fmt, "\n"), $($arg)*));
+    ($($arg:tt)*) => ($crate::serial_print!("{}\n", format_args!($($arg)*)));
+
 }
 
 #[macro_export]

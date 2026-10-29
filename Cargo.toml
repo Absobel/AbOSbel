@@ -7,10 +7,9 @@ edition = "2024"
 bitflags = "2.6.0"
 multiboot2 = { version = "0.23.1", default-features = false, features = ["unstable"] }
 spin = "0.9.8"
-uart_16550 = "0.3.2"
 
-[profile.release] # TODO : remove this one day
-debug = true
+# [profile.release]
+# debug = true
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
