@@ -3,377 +3,103 @@
 use core::{arch::asm, ops::Deref};
 use spin::Once;
 
+use crate::KERNEL_CS;
+
 static IDT_ARR: Once<IdtArr> = Once::new();
 
-#[expect(clippy::too_many_lines)]
+macro_rules! exception {
+    ($name:ident, $txt:literal) => {
+        pub(super) extern "x86-interrupt" fn $name(stack_frame: InterruptStackFrame) {
+            panic!("{} at address {:#x}", $txt, stack_frame.rip)
+        }
+    };
+    ($name:ident, $txt:literal, $err:ident) => {
+        pub(super) extern "x86-interrupt" fn $name(stack_frame: InterruptStackFrame, $err: u64) {
+            panic!(
+                "{} at address {:#x} with error code: {}",
+                $txt, stack_frame.rip, $err
+            )
+        }
+    };
+}
+
+mod handlers {
+    use core::arch::asm;
+
+    use super::InterruptStackFrame;
+    use crate::println;
+
+    exception!(divide_error, "DIVISION ERROR");
+    exception!(debug, "DEBUG EXCEPTION");
+    exception!(nmi, "NON-MASKABLE INTERRUPT");
+    exception!(overflow, "OVERFLOW");
+    exception!(bound_range_exceeded, "BOUND RANGE EXCEEDED");
+    exception!(invalid_opcode, "INVALID OPCODE");
+    exception!(device_not_available, "DEVICE NOT AVAILABLE");
+    exception!(double_fault, "DOUBLE FAULT", error_code);
+    exception!(invalid_tss, "INVALID TSS", error_code);
+    exception!(segment_not_present, "SEGMENT NOT PRESENT", error_code);
+    exception!(stack_segment_fault, "STACK SEGMENT FAULT", error_code);
+    exception!(
+        general_protection_fault,
+        "GENERAL PROTECTION FAULT",
+        error_code
+    );
+    exception!(x87_floating_point, "x87 FLOATING POINT EXCEPTION");
+    exception!(alignment_check, "ALIGNMENT CHECK", error_code);
+    exception!(machine_check, "MACHINE CHECK");
+    exception!(simd_floating_point, "SIMD FLOATING POINT EXCEPTION");
+    exception!(virtualization, "VIRTUALIZATION EXCEPTION");
+    exception!(
+        control_protection,
+        "CONTROL PROTECTION EXCEPTION",
+        error_code
+    );
+
+    // TODO: can deadlock if the writer locks are held. Whenever IRQs are enabled, keep the text to write after the lock is released
+    pub(super) extern "x86-interrupt" fn breakpoint(stack_frame: InterruptStackFrame) {
+        println!("BREAKPOINT at address {:#x}", stack_frame.rip);
+    }
+
+    // TODO: decode error code
+    pub(super) extern "x86-interrupt" fn page_fault(
+        stack_frame: InterruptStackFrame,
+        error_code: u64,
+    ) {
+        let cr2: u64;
+        unsafe { asm!("mov {}, cr2", out(reg) cr2) };
+        panic!(
+            "PAGE FAULT at address {:#x} with error code: {}\n\
+                Trying to access address: {:#x}",
+            stack_frame.rip, error_code, cr2
+        );
+    }
+}
+
 pub fn init_idt() {
     let idt_arr: &'static IdtArr = IDT_ARR.call_once(|| {
-        // HANDLERS
-
-        // 0x00: Division by Zero
-        extern "x86-interrupt" fn divide_error_handler(stack_frame: InterruptStackFrame) -> ! {
-            panic!("DIVISION ERROR at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x01: Debug Exception
-        extern "x86-interrupt" fn debug_handler(stack_frame: InterruptStackFrame) -> ! {
-            panic!("DEBUG EXCEPTION at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x02: Non-Maskable Interrupt
-        extern "x86-interrupt" fn nmi_handler(stack_frame: InterruptStackFrame) -> ! {
-            panic!("NON-MASKABLE INTERRUPT at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x03: Breakpoint
-        extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-            panic!("BREAKPOINT at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x04: Overflow
-        extern "x86-interrupt" fn overflow_handler(stack_frame: InterruptStackFrame) -> ! {
-            panic!("OVERFLOW at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x05: Bound Range Exceeded
-        extern "x86-interrupt" fn bound_range_exceeded_handler(
-            stack_frame: InterruptStackFrame,
-        ) -> ! {
-            panic!("BOUND RANGE EXCEEDED at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x06: Invalid Opcode
-        extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) -> ! {
-            panic!("INVALID OPCODE at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x07: Device Not Available
-        extern "x86-interrupt" fn device_not_available_handler(
-            stack_frame: InterruptStackFrame,
-        ) -> ! {
-            panic!("DEVICE NOT AVAILABLE at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x08: Double Fault
-        extern "x86-interrupt" fn double_fault_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "DOUBLE FAULT at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
-        // 0x0A: Invalid TSS
-        extern "x86-interrupt" fn invalid_tss_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "INVALID TSS at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
-        // 0x0B: Segment Not Present
-        extern "x86-interrupt" fn segment_not_present_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "SEGMENT NOT PRESENT at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
-        // 0x0C: Stack Segment Fault
-        extern "x86-interrupt" fn stack_segment_fault_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "STACK SEGMENT FAULT at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
-        // 0x0D: General Protection Fault
-        extern "x86-interrupt" fn general_protection_fault_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "GENERAL PROTECTION FAULT at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
-        // 0x0E: Page Fault
-        extern "x86-interrupt" fn page_fault_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "PAGE FAULT at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
-        // 0x10: x87 Floating Point Exception
-        extern "x86-interrupt" fn x87_floating_point_handler(
-            stack_frame: InterruptStackFrame,
-        ) -> ! {
-            panic!(
-                "x87 FLOATING POINT EXCEPTION at address {:#x}",
-                stack_frame.rip
-            );
-        }
-
-        // 0x11: Alignment Check
-        extern "x86-interrupt" fn alignment_check_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "ALIGNMENT CHECK at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
-        // 0x12: Machine Check
-        extern "x86-interrupt" fn machine_check_handler(stack_frame: InterruptStackFrame) -> ! {
-            panic!("MACHINE CHECK at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x13: SIMD Floating Point Exception
-        extern "x86-interrupt" fn simd_floating_point_handler(
-            stack_frame: InterruptStackFrame,
-        ) -> ! {
-            panic!(
-                "SIMD FLOATING POINT EXCEPTION at address {:#x}",
-                stack_frame.rip
-            );
-        }
-
-        // 0x14: Virtualization Exception
-        extern "x86-interrupt" fn virtualization_handler(stack_frame: InterruptStackFrame) -> ! {
-            panic!("VIRTUALIZATION EXCEPTION at address {:#x}", stack_frame.rip);
-        }
-
-        // 0x15: Control Protection Exception
-        extern "x86-interrupt" fn control_protection_handler(
-            stack_frame: InterruptStackFrame,
-            error_code: u64,
-        ) -> ! {
-            panic!(
-                "CONTROL PROTECTION EXCEPTION at address {:#x} with error code: {}",
-                stack_frame.rip, error_code
-            );
-        }
-
         let mut idt_arr = IdtArr::new();
 
-        idt_arr.set_entry(
-            0x0,
-            IDTEntry::new(
-                divide_error_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x1,
-            IDTEntry::new(
-                debug_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x2,
-            IDTEntry::new(
-                nmi_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x3,
-            IDTEntry::new(
-                breakpoint_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x4,
-            IDTEntry::new(
-                overflow_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x5,
-            IDTEntry::new(
-                bound_range_exceeded_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x6,
-            IDTEntry::new(
-                invalid_opcode_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x7,
-            IDTEntry::new(
-                device_not_available_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x8,
-            IDTEntry::new(
-                double_fault_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0xA,
-            IDTEntry::new(
-                invalid_tss_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0xB,
-            IDTEntry::new(
-                segment_not_present_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0xC,
-            IDTEntry::new(
-                stack_segment_fault_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0xD,
-            IDTEntry::new(
-                general_protection_fault_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0xE,
-            IDTEntry::new(
-                page_fault_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x10,
-            IDTEntry::new(
-                x87_floating_point_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x11,
-            IDTEntry::new(
-                alignment_check_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x12,
-            IDTEntry::new(
-                machine_check_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x13,
-            IDTEntry::new(
-                simd_floating_point_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x14,
-            IDTEntry::new(
-                virtualization_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
-        idt_arr.set_entry(
-            0x15,
-            IDTEntry::new(
-                control_protection_handler as *const () as u64,
-                0x08,
-                0,
-                IDTGateType::InterruptGate,
-                0,
-            ),
-        );
+        idt_arr.set(0x0, handlers::divide_error);
+        idt_arr.set(0x1, handlers::debug);
+        idt_arr.set(0x2, handlers::nmi);
+        idt_arr.set(0x3, handlers::breakpoint);
+        idt_arr.set(0x4, handlers::overflow);
+        idt_arr.set(0x5, handlers::bound_range_exceeded);
+        idt_arr.set(0x6, handlers::invalid_opcode);
+        idt_arr.set(0x7, handlers::device_not_available);
+        idt_arr.set_err(0x8, handlers::double_fault);
+        idt_arr.set_err(0xA, handlers::invalid_tss);
+        idt_arr.set_err(0xB, handlers::segment_not_present);
+        idt_arr.set_err(0xC, handlers::stack_segment_fault);
+        idt_arr.set_err(0xD, handlers::general_protection_fault);
+        idt_arr.set_err(0xE, handlers::page_fault);
+        idt_arr.set(0x10, handlers::x87_floating_point);
+        idt_arr.set_err(0x11, handlers::alignment_check);
+        idt_arr.set(0x12, handlers::machine_check);
+        idt_arr.set(0x13, handlers::simd_floating_point);
+        idt_arr.set(0x14, handlers::virtualization);
+        idt_arr.set_err(0x15, handlers::control_protection);
 
         idt_arr
     });
@@ -406,6 +132,9 @@ impl Idt {
     }
 }
 
+type Handler = extern "x86-interrupt" fn(InterruptStackFrame);
+type HandlerErr = extern "x86-interrupt" fn(InterruptStackFrame, u64);
+
 struct IdtArr {
     entries: [IDTEntry; 256],
 }
@@ -417,8 +146,16 @@ impl IdtArr {
         }
     }
 
-    const fn set_entry(&mut self, index: usize, entry: IDTEntry) {
-        self.entries[index] = entry;
+    fn add_entry(&mut self, index: u8, handler: *const ()) {
+        self.entries[index as usize] =
+            IDTEntry::new(handler as u64, KERNEL_CS, 0, IDTGateType::InterruptGate, 0);
+    }
+
+    fn set(&mut self, index: u8, h: Handler) {
+        self.add_entry(index, h as *const ());
+    }
+    fn set_err(&mut self, index: u8, h: HandlerErr) {
+        self.add_entry(index, h as *const ());
     }
 }
 

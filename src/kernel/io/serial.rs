@@ -1,19 +1,35 @@
+use core::fmt;
+
 use spin::{Mutex, Once};
 
 use crate::{
-    io::{LoopbackMismatch, SerialPort},
+    io::{LoopbackMismatch, SerialPort, inb, outb},
     x86::without_interrupts,
 };
 
 pub static SERIAL1: Once<Mutex<SerialPort>> = Once::new();
 
+const SERIAL1_PORT: u16 = 0x3F8;
+
 /// # Errors
 /// This function will return an error if the serial port is faulty/doesn't exist
 pub fn init_serial() -> Result<(), LoopbackMismatch> {
-    let serial_port = unsafe { SerialPort::new(0x3F8) };
+    let serial_port = unsafe { SerialPort::new(SERIAL1_PORT) };
     serial_port.init()?;
     SERIAL1.call_once(|| Mutex::new(serial_port));
     Ok(())
+}
+
+pub struct EmergencySerialWriter;
+impl fmt::Write for EmergencySerialWriter {
+    // Just rewrote the write_str function but raw to the serial port without Mutex
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        for b in s.bytes() {
+            while !unsafe { inb(SERIAL1_PORT + 5) & 0x20 != 0 } {}
+            unsafe { outb(SERIAL1_PORT, b) };
+        }
+        Ok(())
+    }
 }
 
 // MACROS

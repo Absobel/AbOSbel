@@ -3,7 +3,11 @@
 use core::arch::asm;
 
 use ab_os_bel::{
-    MULTIBOOT2_INFO, allocator::FRAME_ALLOCATOR, dbg, framebuffer::{self, BUFFER, CP437}, kernel_end_addr, print, println, serial_dbg, serial_print, serial_println,
+    MULTIBOOT2_INFO,
+    allocator::FRAME_ALLOCATOR,
+    dbg,
+    framebuffer::{self, BUFFER, CP437},
+    kernel_end_addr, print, println, serial_dbg, serial_print, serial_println,
 };
 
 pub fn main() {
@@ -18,12 +22,7 @@ pub fn main() {
     }
     println!("\n");
 
-    // let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
-    // log_tag(boot_info.framebuffer_tag());
-    // log_tag(boot_info.memory_map_tag());
-    // log_tag(boot_info.efi_memory_map_tag());
-
-    // division_by_zero();
+    // whatever you want
 
     println!("\nEnd of program.");
 }

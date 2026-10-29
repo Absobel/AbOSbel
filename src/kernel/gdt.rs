@@ -55,7 +55,7 @@ impl Gdt {
             asm!("lgdt [{}]", in(reg) self, options(readonly, nostack, preserves_flags));
             // Reload code segment register
             asm!(
-                "push 0x08", // Refers to the 8th byte of the GDT, which is the kernel code segment descriptor
+                "push {kernel_cs}",
                 "lea {tmp}, [rip + 2f]",
                 "push {tmp}",
                 "retfq",
@@ -66,6 +66,7 @@ impl Gdt {
                 "mov fs, ax",
                 "mov gs, ax",
                 "mov ss, ax",
+                kernel_cs = const super::KERNEL_CS,
                 tmp = out(reg) _,
             );
         }
