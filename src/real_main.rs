@@ -3,11 +3,7 @@
 use core::arch::asm;
 
 use ab_os_bel::{
-    MULTIBOOT2_INFO,
-    allocator::FRAME_ALLOCATOR,
-    dbg,
-    framebuffer::{self, BUFFER, VGA_TEST_SLICE},
-    kernel_end_addr, println, serial_dbg, serial_print, serial_println,
+    MULTIBOOT2_INFO, allocator::FRAME_ALLOCATOR, dbg, framebuffer::{self, BUFFER, CP437}, kernel_end_addr, print, println, serial_dbg, serial_print, serial_println,
 };
 
 pub fn main() {
@@ -17,7 +13,10 @@ pub fn main() {
     let buffer = BUFFER.get().expect("Buffer required");
     buffer.lock().clear(lavander);
 
-    println!("{}\n", VGA_TEST_SLICE);
+    for c in CP437 {
+        print!("{c}");
+    }
+    println!("\n");
 
     // let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
     // log_tag(boot_info.framebuffer_tag());
