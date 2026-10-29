@@ -7,10 +7,16 @@ use spin::Once;
 static TSS: Once<TaskStateSegment> = Once::new();
 static GDT_ARR: Once<GdtDescriptors> = Once::new();
 
+// TODO: change that when userspace (except if i put the selectors after i suppose)
+const TSS_SELECTOR: u16 = 0x18;
+const IST1_SIZE: usize = 0x4000;
+static mut IST1: [u8; IST1_SIZE] = [0; IST1_SIZE];
+
 pub fn init() {
     let tss: &'static TaskStateSegment = TSS.call_once(|| {
         let mut tss = TaskStateSegment::empty();
         tss.iopb_offset = core::mem::size_of::<TaskStateSegment>() as u16; // essentially disabling IOPB
+        tss.ist1 = &raw const IST1 as u64 + IST1_SIZE as u64; // stack grows down, so we point to the end of the stack
         tss
     });
 
@@ -69,6 +75,8 @@ impl Gdt {
                 kernel_cs = const super::KERNEL_CS,
                 tmp = out(reg) _,
             );
+            // Make the cpu use the TSS
+            asm!("ltr {0:x}", in(reg) TSS_SELECTOR);
         }
     }
 }

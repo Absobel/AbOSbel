@@ -76,30 +76,34 @@ mod handlers {
     }
 }
 
+const NO_IST: u8 = 0;
+const DOUBLE_FAULT_IST: u8 = 1;
+
 pub fn init_idt() {
     let idt_arr: &'static IdtArr = IDT_ARR.call_once(|| {
         let mut idt_arr = IdtArr::new();
 
-        idt_arr.set(0x0, handlers::divide_error);
-        idt_arr.set(0x1, handlers::debug);
-        idt_arr.set(0x2, handlers::nmi);
-        idt_arr.set(0x3, handlers::breakpoint);
-        idt_arr.set(0x4, handlers::overflow);
-        idt_arr.set(0x5, handlers::bound_range_exceeded);
-        idt_arr.set(0x6, handlers::invalid_opcode);
-        idt_arr.set(0x7, handlers::device_not_available);
-        idt_arr.set_err(0x8, handlers::double_fault);
-        idt_arr.set_err(0xA, handlers::invalid_tss);
-        idt_arr.set_err(0xB, handlers::segment_not_present);
-        idt_arr.set_err(0xC, handlers::stack_segment_fault);
-        idt_arr.set_err(0xD, handlers::general_protection_fault);
-        idt_arr.set_err(0xE, handlers::page_fault);
-        idt_arr.set(0x10, handlers::x87_floating_point);
-        idt_arr.set_err(0x11, handlers::alignment_check);
-        idt_arr.set(0x12, handlers::machine_check);
-        idt_arr.set(0x13, handlers::simd_floating_point);
-        idt_arr.set(0x14, handlers::virtualization);
-        idt_arr.set_err(0x15, handlers::control_protection);
+
+        idt_arr.set(0x0, handlers::divide_error, NO_IST);
+        idt_arr.set(0x1, handlers::debug, NO_IST);
+        idt_arr.set(0x2, handlers::nmi, NO_IST);
+        idt_arr.set(0x3, handlers::breakpoint, NO_IST);
+        idt_arr.set(0x4, handlers::overflow, NO_IST);
+        idt_arr.set(0x5, handlers::bound_range_exceeded, NO_IST);
+        idt_arr.set(0x6, handlers::invalid_opcode, NO_IST);
+        idt_arr.set(0x7, handlers::device_not_available, NO_IST);
+        idt_arr.set_err(0x8, handlers::double_fault, DOUBLE_FAULT_IST);
+        idt_arr.set_err(0xA, handlers::invalid_tss, NO_IST);
+        idt_arr.set_err(0xB, handlers::segment_not_present, NO_IST);
+        idt_arr.set_err(0xC, handlers::stack_segment_fault, NO_IST);
+        idt_arr.set_err(0xD, handlers::general_protection_fault, NO_IST);
+        idt_arr.set_err(0xE, handlers::page_fault, NO_IST);
+        idt_arr.set(0x10, handlers::x87_floating_point, NO_IST);
+        idt_arr.set_err(0x11, handlers::alignment_check, NO_IST);
+        idt_arr.set(0x12, handlers::machine_check, NO_IST);
+        idt_arr.set(0x13, handlers::simd_floating_point, NO_IST);
+        idt_arr.set(0x14, handlers::virtualization, NO_IST);
+        idt_arr.set_err(0x15, handlers::control_protection, NO_IST);
 
         idt_arr
     });
@@ -146,16 +150,16 @@ impl IdtArr {
         }
     }
 
-    fn add_entry(&mut self, index: u8, handler: *const ()) {
+    fn add_entry(&mut self, index: u8, handler: *const (), ist: u8) {
         self.entries[index as usize] =
-            IDTEntry::new(handler as u64, KERNEL_CS, 0, IDTGateType::InterruptGate, 0);
+            IDTEntry::new(handler as u64, KERNEL_CS, ist, IDTGateType::InterruptGate, 0);
     }
 
-    fn set(&mut self, index: u8, h: Handler) {
-        self.add_entry(index, h as *const ());
+    fn set(&mut self, index: u8, h: Handler, ist: u8) {
+        self.add_entry(index, h as *const (), ist);
     }
-    fn set_err(&mut self, index: u8, h: HandlerErr) {
-        self.add_entry(index, h as *const ());
+    fn set_err(&mut self, index: u8, h: HandlerErr, ist: u8) {
+        self.add_entry(index, h as *const (), ist);
     }
 }
 

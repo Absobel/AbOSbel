@@ -27,13 +27,6 @@ pub fn main() {
     println!("\nEnd of program.");
 }
 
-fn log_tag<T: core::fmt::Debug>(tag: T) {
-    serial_dbg!(&tag);
-    serial_print!("\n\n");
-    dbg!(&tag);
-    println!("\n\n");
-}
-
 fn division_by_zero() {
     unsafe {
         asm!(
