@@ -1,12 +1,40 @@
-use core::ops::Range;
+use core::{
+    fmt::LowerHex,
+    ops::{Add, Range},
+};
 
 use multiboot2::{MemoryArea, MemoryAreaType};
 use spin::{Mutex, Once};
 
-use crate::{MULTIBOOT2_INFO, align_down_pow2, align_up, kernel_end_addr};
+use crate::{
+    MULTIBOOT2_INFO,
+    utils::{align_down_pow2, align_up},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysicalAddress(pub usize);
+
+impl LowerHex for PhysicalAddress {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        LowerHex::fmt(&self.0, f)
+    }
+}
+
+impl Add<usize> for PhysicalAddress {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
+unsafe extern "C" {
+    static kernel_end: u8;
+}
+#[must_use]
+pub fn kernel_end_addr() -> PhysicalAddress {
+    PhysicalAddress(&raw const kernel_end as usize)
+}
 
 // TODO: find a way to do mutexes without_interrupt
 pub static FRAME_ALLOCATOR: Once<Mutex<FrameAllocator>> = Once::new();
@@ -60,7 +88,7 @@ impl Iterator for FrameAllocator {
             let current = self.current;
 
             if area.typ() != MemoryAreaType::Available
-                || current.0 + Self::FRAME_SIZE > area.end_address() as usize
+                || current + Self::FRAME_SIZE > PhysicalAddress(area.end_address() as usize)
             {
                 self.current_area_idx += 1;
                 continue;
@@ -70,7 +98,7 @@ impl Iterator for FrameAllocator {
                 continue;
             }
 
-            self.current = PhysicalAddress(current.0 + Self::FRAME_SIZE);
+            self.current = current + Self::FRAME_SIZE;
             return Some(current);
         }
     }

@@ -6,7 +6,7 @@ use spin::{Mutex, Once};
 
 use crate::{MULTIBOOT2_INFO, io::SERIAL1, x86::without_interrupts};
 
-use super::{ScreenBuffer, TextBuffer, Writer};
+use super::{ScreenBuffer, Writer};
 
 #[derive(Debug, Clone, Copy)]
 pub enum OutOfBoundsError {
@@ -78,7 +78,6 @@ impl SliceOutOfBoundsError {
 //////////////////////////////////
 
 pub static BUFFER: Once<Mutex<ScreenBuffer>> = Once::new();
-pub static TEXT_BUFFER: Once<Mutex<TextBuffer>> = Once::new();
 pub static WRITER: Once<Mutex<Writer>> = Once::new();
 
 /// # Panics
@@ -97,8 +96,7 @@ pub fn init_graphics() {
     // crate::x86::set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
 
     BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag)));
-    TEXT_BUFFER.call_once(|| Mutex::new(TextBuffer::new(1)));
-    WRITER.call_once(|| Mutex::new(Writer::default()));
+    WRITER.call_once(|| Mutex::new(Writer::new(1)));
 }
 
 #[doc(hidden)]

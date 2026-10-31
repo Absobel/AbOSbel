@@ -64,11 +64,11 @@ impl ScreenBuffer {
 
     /// # Errors
     /// This function will return an error if the point is out of bounds of the buffer.
+    #[expect(dead_code)]
     pub fn read(&mut self, x: usize, y: usize) -> Result<Color, OutOfBoundsError> {
         Ok(*self.pxl(x, y)?)
     }
 
-    #[expect(clippy::missing_panics_doc)]
     pub fn clear(&mut self, color: Color) {
         for y in 0..self.max_y {
             for x in 0..self.max_x {

@@ -1,13 +1,16 @@
-#![allow(dead_code, unused_variables, unused_imports)]
+#![allow(
+    dead_code,
+    unused_variables,
+    unused_imports,
+    clippy::missing_panics_doc
+)]
 
 use core::arch::asm;
 
-use ab_os_bel::{
-    MULTIBOOT2_INFO,
-    allocator::FRAME_ALLOCATOR,
-    dbg,
+use crate::{
     framebuffer::{self, BUFFER, CP437},
-    kernel_end_addr, print, println, serial_dbg, serial_print, serial_println,
+    io::Port,
+    print, println,
 };
 
 pub fn main() {
@@ -23,6 +26,8 @@ pub fn main() {
     println!("\n");
 
     // whatever you want
+    // let debug_exit_port = Port::new(0xf4);
+    // unsafe { debug_exit_port.outl(0x10) }; // Exit QEMU with code 0x10
 
     println!("\nEnd of program.");
 }

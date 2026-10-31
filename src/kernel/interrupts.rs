@@ -3,7 +3,7 @@
 use core::{arch::asm, ops::Deref};
 use spin::Once;
 
-use crate::KERNEL_CS;
+use crate::gdt::KERNEL_CS;
 
 static IDT_ARR: Once<IdtArr> = Once::new();
 
@@ -83,7 +83,6 @@ pub fn init_idt() {
     let idt_arr: &'static IdtArr = IDT_ARR.call_once(|| {
         let mut idt_arr = IdtArr::new();
 
-
         idt_arr.set(0x0, handlers::divide_error, NO_IST);
         idt_arr.set(0x1, handlers::debug, NO_IST);
         idt_arr.set(0x2, handlers::nmi, NO_IST);
@@ -151,8 +150,13 @@ impl IdtArr {
     }
 
     fn add_entry(&mut self, index: u8, handler: *const (), ist: u8) {
-        self.entries[index as usize] =
-            IDTEntry::new(handler as u64, KERNEL_CS, ist, IDTGateType::InterruptGate, 0);
+        self.entries[index as usize] = IDTEntry::new(
+            handler as u64,
+            KERNEL_CS,
+            ist,
+            IDTGateType::InterruptGate,
+            0,
+        );
     }
 
     fn set(&mut self, index: u8, h: Handler, ist: u8) {

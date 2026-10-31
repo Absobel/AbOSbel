@@ -5,27 +5,29 @@
 // extern crate alloc;
 
 mod kernel;
+pub mod real_main;
 mod utils;
 
-pub use kernel::*;
-pub use utils::*;
+#[doc(hidden)]
+pub use framebuffer::_print;
+pub use utils::hlt_loop;
 
+use kernel::{allocator, framebuffer, gdt, interrupts, io, x86};
 use multiboot2::{BootInformation, BootInformationHeader, LoadError};
 use spin::Once;
 
-use crate::kernel::allocator::PhysicalAddress;
+pub mod init {
+    pub use crate::allocator::init as allocator;
+    pub use crate::framebuffer::init_graphics as framebuffer;
+    pub use crate::gdt::init as gdt;
+    pub use crate::interrupts::init_idt as interrupts;
+    pub use crate::io::init_serial as serial;
+    pub use crate::load_multiboot as multiboot;
+}
 
 // INITIALIZATION
 
-pub static MULTIBOOT2_INFO: Once<BootInformation<'static>> = Once::new();
-
-unsafe extern "C" {
-    static kernel_end: u8;
-}
-#[must_use]
-pub fn kernel_end_addr() -> PhysicalAddress {
-    PhysicalAddress(&raw const kernel_end as usize)
-}
+pub(crate) static MULTIBOOT2_INFO: Once<BootInformation<'static>> = Once::new();
 
 /// # Errors
 /// This function will return an error if the information can't be parsed as multiboot2 information.

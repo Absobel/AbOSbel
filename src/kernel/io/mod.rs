@@ -1,5 +1,5 @@
-pub mod ports;
-pub mod serial;
+mod ports;
+mod serial;
 
 pub use ports::*;
 pub use serial::*;

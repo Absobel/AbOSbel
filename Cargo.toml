@@ -15,5 +15,4 @@ spin = "0.9.8"
 pedantic = { level = "warn", priority = -1 }
 nursery  = { level = "warn", priority = -1 }
 style    = { level = "warn", priority = -1 }
-
 cast_possible_truncation = "allow"

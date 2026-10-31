@@ -35,6 +35,9 @@ pub fn init() {
 
 ///// GDT
 
+/// Refers to the 8th byte of the GDT, which is the kernel code segment descriptor
+pub const KERNEL_CS: u16 = 0x08;
+
 #[repr(C, packed)]
 struct Gdt {
     limit: u16,
@@ -72,7 +75,7 @@ impl Gdt {
                 "mov fs, ax",
                 "mov gs, ax",
                 "mov ss, ax",
-                kernel_cs = const super::KERNEL_CS,
+                kernel_cs = const KERNEL_CS,
                 tmp = out(reg) _,
             );
             // Make the cpu use the TSS
@@ -146,7 +149,7 @@ impl GdtNormalDescriptor {
         }
     }
 
-    pub const fn null_descriptor() -> Self {
+    const fn null_descriptor() -> Self {
         Self::new(
             0,
             0,

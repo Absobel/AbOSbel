@@ -2,7 +2,7 @@ use core::fmt;
 
 use spin::MutexGuard;
 
-use super::{BUFFER, Color, OutOfBoundsError, ScreenBuffer, TEXT_BUFFER};
+use super::{BUFFER, Color, OutOfBoundsError, ScreenBuffer};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -15,7 +15,6 @@ pub struct TextBuffer {
 }
 
 impl TextBuffer {
-    #[expect(clippy::missing_panics_doc)]
     pub fn new(scale_factor: usize) -> Self {
         let buffer = BUFFER.get().expect("Buffer required").lock();
         let max_char_x = buffer.max_x() / (VGA_CHAR_SIZE.0 * scale_factor);
@@ -55,7 +54,6 @@ impl TextBuffer {
     }
 
     // Assumes the slice is of length 16 (16 bytes = 8*16 pixels = char)
-    #[allow(clippy::needless_range_loop)]
     fn draw_char_rect(
         &self,
         rect: &[u8],
@@ -74,8 +72,8 @@ impl TextBuffer {
         }
         let mut buffer = Self::get_buffer();
         for char_pxl_x in 0..VGA_CHAR_SIZE.0 {
-            for char_pxl_y in 0..VGA_CHAR_SIZE.1 {
-                let char_pxl = (rect[char_pxl_y] >> (VGA_CHAR_SIZE.0 - 1 - char_pxl_x)) & 1;
+            for (char_pxl_y, pxl_y) in rect.iter().enumerate().take(VGA_CHAR_SIZE.1) {
+                let char_pxl = (pxl_y >> (VGA_CHAR_SIZE.0 - 1 - char_pxl_x)) & 1;
                 let color = if char_pxl == 0 {
                     background_color
                 } else {
@@ -115,38 +113,10 @@ impl TextBuffer {
     }
 
     /// # Errors
-    /// This function will return an error if the text is out of bounds of the buffer.
-    pub fn write_str(
-        &mut self,
-        string: &str,
-        char_x: usize,
-        char_y: usize,
-        background_color: Color,
-        foreground_color: Color,
-    ) -> Result<(), OutOfBoundsError> {
-        let mut char_x = char_x;
-        let mut char_y = char_y;
-        for char_i in string.chars() {
-            if char_x >= self.max_char_x {
-                char_x = 0;
-                char_y += 1;
-            }
-            if char_i == '\n' {
-                char_x = 0;
-                char_y += 1;
-            } else {
-                self.write_char(char_i, char_x, char_y, background_color, foreground_color)?;
-                char_x += 1;
-            }
-        }
-        Ok(())
-    }
-
-    /// # Errors
     /// This function will return an error if the point is out of bounds of the buffer.
     #[expect(clippy::similar_names)]
     pub fn move_slice_text(
-        &mut self,
+        &self,
         char_x: usize,
         char_y: usize,
         text_len: usize,
@@ -176,27 +146,25 @@ pub struct Writer {
     column_position: usize,
     background_code: Color,
     foreground_code: Color,
+    text_buffer: TextBuffer,
 }
 
-impl Default for Writer {
-    fn default() -> Self {
+impl Writer {
+    pub fn new(scale_factor: usize) -> Self {
         Self {
             column_position: 0,
             background_code: Color::new(0, 0, 0, 255),
             foreground_code: Color::new(255, 255, 255, 255),
+            text_buffer: TextBuffer::new(scale_factor),
         }
     }
-}
 
-impl Writer {
-    fn get_text_buffer() -> MutexGuard<'static, TextBuffer> {
-        TEXT_BUFFER.get().expect("Text buffer required").lock()
-    }
-
+    #[expect(dead_code)]
     pub const fn change_background_color(&mut self, color: Color) {
         self.background_code = color;
     }
 
+    #[expect(dead_code)]
     pub const fn change_foreground_color(&mut self, color: Color) {
         self.foreground_code = color;
     }
@@ -204,16 +172,15 @@ impl Writer {
     /// # Errors
     /// This function will return an error if the text is out of bounds of the buffer.
     pub fn write_str(&mut self, string: &str) -> Result<(), OutOfBoundsError> {
-        let mut text_buffer = Self::get_text_buffer();
         for char in string.chars() {
             match char {
-                '\n' => self.new_line(&mut text_buffer),
+                '\n' => self.new_line(),
                 char => {
-                    if self.column_position >= text_buffer.max_char_x {
-                        self.new_line(&mut text_buffer);
+                    if self.column_position >= self.text_buffer.max_char_x {
+                        self.new_line();
                     }
-                    let max_char_y = text_buffer.max_char_y;
-                    text_buffer.write_char(
+                    let max_char_y = self.text_buffer.max_char_y;
+                    self.text_buffer.write_char(
                         char,
                         self.column_position,
                         max_char_y - 1,
@@ -227,20 +194,20 @@ impl Writer {
         Ok(())
     }
 
-    fn clear_line(&mut self, text_buffer: &MutexGuard<'_, TextBuffer>) {
-        let max_char_y = text_buffer.max_char_y;
-        text_buffer
+    fn clear_line(&mut self) {
+        let max_char_y = self.text_buffer.max_char_y;
+        self.text_buffer
             .clear_line(max_char_y - 1, self.background_code)
             .expect("Is not out of bounds as it is a function called manually.");
         self.column_position = 0;
     }
 
-    fn new_line(&mut self, text_buffer: &mut MutexGuard<'_, TextBuffer>) {
-        let text_len = text_buffer.max_char_x * (text_buffer.max_char_y - 1);
-        text_buffer
+    fn new_line(&mut self) {
+        let text_len = self.text_buffer.max_char_x * (self.text_buffer.max_char_y - 1);
+        self.text_buffer
             .move_slice_text(0, 1, text_len, 0, -1)
             .expect("Is not out of bound as it is a function called manually.");
-        self.clear_line(text_buffer);
+        self.clear_line();
     }
 }
 

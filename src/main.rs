@@ -3,24 +3,22 @@
 
 // extern crate alloc;
 
-mod real_main;
-
-use ab_os_bel::{hlt_loop, println};
+use ab_os_bel::{hlt_loop, init, println, real_main};
 
 // INITIALIZATION
 
 /// # Panics
 /// This function will return an error if the information can't be parsed as multiboot2 information.
-pub fn init(multiboot_info_addr: usize) {
+pub fn initialization(multiboot_info_addr: usize) {
     // TODO: Make it so that it gets printed on the screen after the framebuffer is initialized. Useless for this specifically though
-    let _ = ab_os_bel::io::serial::init_serial();
+    let _ = init::serial();
     println!("Initializing ab_os_bel...");
 
-    ab_os_bel::gdt::init(); // Initialize the segmentation for interruption stacks
-    ab_os_bel::interrupts::init_idt(); // Initialize the interruptions and the handlers
-    unsafe { ab_os_bel::load_multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
-    ab_os_bel::allocator::init(); // Initialize the physical memory allocator
-    ab_os_bel::framebuffer::init_graphics();
+    init::gdt(); // Initialize the segmentation for interruption stacks
+    init::interrupts(); // Initialize the interruptions and the handlers
+    unsafe { init::multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
+    init::allocator(); // Initialize the physical memory allocator
+    init::framebuffer();
 
     println!("ab_os_bel initialized.\n");
 }
@@ -29,7 +27,7 @@ pub fn init(multiboot_info_addr: usize) {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main(multiboot_info_addr: usize) -> ! {
-    init(multiboot_info_addr);
+    initialization(multiboot_info_addr);
 
     real_main::main();
 
