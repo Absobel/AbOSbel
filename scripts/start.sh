@@ -12,9 +12,14 @@ if [[ $EXEC_PATH != *"ab-os-bel" ]]; then
   TEST="true"
 fi
 DEBUG="false"
-if [[ ${2:-} == "debug" ]]; then
-  DEBUG="true"
-fi
+AMD="false"
+for arg in "${@:2}"; do
+  case $arg in
+    debug) DEBUG="true" ;;
+    amd)   AMD="true" ;;
+    *) echo -e "\e[1;31mERROR:\e[0m Unknown option: $arg"; exit 1 ;;
+  esac
+done
 
 #### CREATE ISO ####
 
@@ -49,6 +54,7 @@ EXTRA_QEMU_FLAGS=""
 if [[ $TEST == "true" ]]; then
   EXTRA_QEMU_FLAGS+="-display none "
 fi
+
 if [[ $DEBUG == "true" ]]; then
   EXTRA_QEMU_FLAGS+="-s -S "
 fi
@@ -78,11 +84,16 @@ QEMU_FLAGS+='-vga vmware ' # Allows 32 bpp
 QEMU_FLAGS+='-cdrom target/ab-os-bel.iso '
 QEMU_FLAGS+='-serial stdio ' # Allows printing to console
 QEMU_FLAGS+='-no-reboot ' # If the os reboots, exit instead
-QEMU_FLAGS+='-cpu host ' # Use the host cpu
-QEMU_FLAGS+='-enable-kvm ' # Enable KVM
 QEMU_FLAGS+="-drive if=pflash,format=raw,readonly=on,file=$OVMF " # Boot with UEFI
 # Tests
 QEMU_FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
+# CPU
+if [[ $AMD == "true" ]]; then
+  QEMU_FLAGS+='-cpu EPYC ' # Emulated AMD CPU, no KVM (slow)
+else
+  QEMU_FLAGS+='-cpu host ' # Use the host cpu
+  QEMU_FLAGS+='-enable-kvm ' # Enable KVM
+fi
 
 qemu-system-x86_64 $QEMU_FLAGS $EXTRA_QEMU_FLAGS &
 

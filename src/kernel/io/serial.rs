@@ -26,7 +26,9 @@ impl fmt::Write for EmergencySerialWriter {
         let data_port = Port::new(SERIAL1_PORT);
         let line_status = Port::<u8>::new(SERIAL1_PORT + 5);
         for b in s.bytes() {
-            while !unsafe { line_status.inb() & 0x20 != 0 } {}
+            while !unsafe { line_status.inb() & 0x20 != 0 } {
+                core::hint::spin_loop();
+            }
             unsafe { data_port.outb(b) };
         }
         Ok(())

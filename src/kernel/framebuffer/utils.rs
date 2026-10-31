@@ -90,10 +90,7 @@ pub fn init_graphics() {
         .expect("Framebuffer required")
         .expect("Framebuffer required");
 
-    // TODO : Causes GPF and is probably not needed
-    // let height = framebuffer_tag.height() as usize;
-    // let pitch = framebuffer_tag.pitch() as usize;
-    // crate::x86::set_mtrr_wc(framebuffer_tag.address() as usize, height * pitch).expect("MTTR WC failed");
+    // TODO: Write combining on this framebuffer, through PAT, maybe, i don't really care tbh but memorial for the MTRR that were never used. No wonder why the osdev wiki was wrong on this. It's legacy
 
     BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag)));
     WRITER.call_once(|| Mutex::new(Writer::new(1)));

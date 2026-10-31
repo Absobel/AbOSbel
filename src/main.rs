@@ -19,7 +19,9 @@ pub fn initialization(multiboot_info_addr: usize) {
     unsafe { init::multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
     init::allocator(); // Initialize the physical memory allocator
     init::framebuffer();
-
+    init::cpuid().unwrap_or_else(|e| {
+        println!("{e}");
+    });
     println!("ab_os_bel initialized.\n");
 }
 

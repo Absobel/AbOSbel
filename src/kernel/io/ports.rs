@@ -132,7 +132,9 @@ impl Uart16550 {
     #[expect(dead_code)]
     #[must_use]
     pub fn read_byte(&self) -> u8 {
-        while !self.byte_received() {}
+        while !self.byte_received() {
+            core::hint::spin_loop();
+        }
         unsafe { self.data_low_div.inb() }
     }
 
@@ -142,7 +144,9 @@ impl Uart16550 {
     }
 
     pub fn write_byte(&self, data: u8) {
-        while !self.is_transmit_empty() {}
+        while !self.is_transmit_empty() {
+            core::hint::spin_loop();
+        }
         unsafe { self.data_low_div.outb(data) };
     }
 }

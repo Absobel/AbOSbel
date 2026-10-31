@@ -23,6 +23,7 @@ pub mod init {
     pub use crate::interrupts::init_idt as interrupts;
     pub use crate::io::init_serial as serial;
     pub use crate::load_multiboot as multiboot;
+    pub use crate::x86::init_cpuid as cpuid;
 }
 
 // INITIALIZATION
