@@ -2,7 +2,7 @@ This is my own OS !
 If you want to run it on Windows, install WSL with Debian or whatever and follow the instructions for the distribution in question.
 
 ## Features
-It boots only on UEFI for now (i think)
+It boots on both UEFI and BIOS
 It only supports 32 bpp framebuffers for now (so 4 bytes per pixel)  
 x86_64 only because I'm not a masochist (at least not for the foreseeable future) (EDIT : funny because building for x86_64 is being a masochist)
 
@@ -11,8 +11,10 @@ x86_64 only because I'm not a masochist (at least not for the foreseeable future
 - `rustup`
 - `binutils` (for `as`)
 - GRUB with EFI support, `xorriso` and `mtools` to build the iso
-- QEMU and OVMF (UEFI firmware) to run it
+- QEMU
+- OVMF (if booting in UEFI mode, the default)
 - `gdb` (only for debugging)
+- `python3` (only for testing)
 
 | | Arch | Debian / Ubuntu / WSL |
 |---|---|---|
@@ -33,17 +35,25 @@ If OVMF is installed somewhere `scripts/start.sh` doesn't look, set `OVMF_PATH=/
 
 If you don't have KVM enabled, enable it, or comment out `QEMU_FLAGS+='-cpu host '` and `QEMU_FLAGS+='-enable-kvm '` in `scripts/start.sh`. However, it'll be slower, so try to enable it.
 
-To debug the project, use `cargo run -- debug`. This will launch QEMU and attach GDB to it. You can setup breakpoints in `scripts/start.sh`
+To run the project using a simulated amd cpu, use `cargo run -- --amd`
+To run the project using BIOS instead of UEFI, use `cargo run -- --bios`
+To debug the project, use `cargo run -- --debug`. This will launch QEMU and attach GDB to it. You can setup breakpoints in `scripts/start.sh`
 
 Note 2: Don't bother with `scripts/install.sh`, it will just work on my machine
 
-## Running with podman (or docker)
+## Testing
+
+Run the tests with the script `scripts/tests.py` (you'll need python3).
+
+Beware, DO NOT run `cargo test` as it will just not work.
+
+## Running with podman
 
 If you prefer to use podman for building and testing the project, you can do so.
-You just need podman (or docker) and then you can build the docker image and run it with the following command :
+You just need podman then you can build the image and run it with the following command :
 
 ```bash
 podman build -t ab_os_bel . && podman run -it --rm --device /dev/kvm --group-add keep-groups ab_os_bel
 ```
 
-You will be dropped in a shell inside the docker container and you can run the commands described above. If you want to have a graphical environnement then set it up yourself because it's plateform dependant.
+You will be dropped in a shell inside the container and you can run the commands described above. If you want to have a graphical environnement then set it up yourself because it's plateform dependant.

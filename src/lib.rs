@@ -10,7 +10,7 @@ mod utils;
 
 #[doc(hidden)]
 pub use framebuffer::_print;
-pub use utils::hlt_loop;
+pub use utils::{hlt_loop, panic_report, exit_qemu, QemuExitCode};
 
 use kernel::{allocator, framebuffer, gdt, interrupts, io, x86};
 use multiboot2::{BootInformation, BootInformationHeader, LoadError};
@@ -37,4 +37,21 @@ pub unsafe fn load_multiboot(multiboot_info_addr: usize) -> Result<(), LoadError
         unsafe { BootInformation::load(multiboot_info_addr as *const BootInformationHeader) }?;
     MULTIBOOT2_INFO.call_once(|| multiboot_info);
     Ok(())
+}
+
+/// # Panics
+/// This function will panic if the information can't be parsed as multiboot2 information.
+pub fn initialization(multiboot_info_addr: usize) {
+    let _ = init::serial();
+    println!("Initializing ab_os_bel...");
+
+    init::gdt(); // Initialize the segmentation for interruption stacks
+    init::interrupts(); // Initialize the interruptions and the handlers
+    unsafe { init::multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
+    init::allocator(); // Initialize the physical memory allocator
+    init::framebuffer();
+    init::cpuid().unwrap_or_else(|e| {
+        println!("{e}");
+    });
+    println!("ab_os_bel initialized.\n");
 }

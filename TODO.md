@@ -1,26 +1,20 @@
-[x] - make it boot with grub
-[x] - return to the previous state (no matter the state of tests)
-[x] - make the test environnement work again
-[x] - VGA to UEFI Framebuffer
-    [x] - Display smth
-    [x] - Rewrite println! macro
-    [x] - Resuse println! macro (serial_println -> println)
-    [ ] - ~~Make it work for other resolutions~~
-    [x] - Change from 24 bpp to 32 bpp
-[ ] - tests
-    [ ] - unit
-    [ ] - integration
-[x] - Interrupts
-[ ] - continue the tutorial
-[ ] - After allocator, rewrite the graphical part and a lot of other things
-    [ ] - rewrite buffer into a vec/smth
-    [ ] - Adapt for different framebuffers colors and offset
-[ ] - Logging
-[ ] - PIC to APIC
-[ ] - Write the multiboot part in rust, even the bootstrap if i'm feeling like it
+### Testing
 
-Future goals :
+* Do the rest of the integration tests
 
-[ ] - github actions ??
-[ ] - Global peace in the whole world
-[ ] - documentation
+### The rest
+
+* Support BIOS for sure
+* After allocator, rewrite the graphical part and a lot of other things
+    * rewrite buffer into a vec/smth
+    * Adapt for different framebuffers colors and offset
+* Logging
+* APIC
+* Write the multiboot part in rust, even the bootstrap if i'm feeling like it
+* Make podman connect to VNC for display (use a vnc argument to give it the `-display vnc=0.0.0.0:0`)
+
+### Future goals
+
+* github actions ??
+* Global peace in the whole world
+* documentation

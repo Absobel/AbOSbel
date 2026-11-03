@@ -13,13 +13,20 @@ if [[ $EXEC_PATH != *"ab-os-bel" ]]; then
 fi
 DEBUG="false"
 AMD="false"
+BIOS="false"
 for arg in "${@:2}"; do
   case $arg in
-    debug) DEBUG="true" ;;
-    amd)   AMD="true" ;;
+    --debug) DEBUG="true" ;;
+    --amd)   AMD="true" ;;
+    --bios)  BIOS="true" ;;
     *) echo -e "\e[1;31mERROR:\e[0m Unknown option: $arg"; exit 1 ;;
   esac
 done
+
+TEST_TIMEOUT=30
+if [[ $AMD == "true" ]]; then
+  TEST_TIMEOUT=60
+fi
 
 #### CREATE ISO ####
 
@@ -48,33 +55,24 @@ grub-mkrescue -o target/ab-os-bel.iso ${ISO_DIR}
 
 
 #### QEMU ####
-  
-# Detect if it's not a test by checking if the executable name ends with "ab-os-bel"
-EXTRA_QEMU_FLAGS=""
-if [[ $TEST == "true" ]]; then
-  EXTRA_QEMU_FLAGS+="-display none "
-fi
 
-if [[ $DEBUG == "true" ]]; then
-  EXTRA_QEMU_FLAGS+="-s -S "
+if [[ $BIOS == "false" ]]; then
+  OVMF=""
+  for f in \
+    "${OVMF_PATH:-}" \
+    /usr/share/edk2/x64/OVMF.4m.fd \
+    /usr/share/ovmf/OVMF.fd \
+    /usr/share/OVMF/OVMF_CODE_4M.fd \
+    /usr/share/OVMF/OVMF_CODE.fd \
+    /usr/share/edk2/ovmf/OVMF_CODE.fd \
+    /usr/share/qemu/OVMF.fd; do
+    if [[ -n "$f" && -f "$f" ]]; then OVMF="$f"; break; fi
+  done
+  if [[ -z "$OVMF" ]]; then
+    echo -e "\e[1;31mERROR:\e[0m OVMF not found. Install it or set OVMF_PATH."
+    exit 1
+  fi
 fi
-
-OVMF=""
-for f in \
-  "${OVMF_PATH:-}" \
-  /usr/share/edk2/x64/OVMF.4m.fd \
-  /usr/share/ovmf/OVMF.fd \
-  /usr/share/OVMF/OVMF_CODE_4M.fd \
-  /usr/share/OVMF/OVMF_CODE.fd \
-  /usr/share/edk2/ovmf/OVMF_CODE.fd \
-  /usr/share/qemu/OVMF.fd; do
-  if [[ -n "$f" && -f "$f" ]]; then OVMF="$f"; break; fi
-done
-if [[ -z "$OVMF" ]]; then
-  echo -e "\e[1;31mERROR:\e[0m OVMF not found. Install it or set OVMF_PATH."
-  exit 1
-fi
-
 
 QEMU_FLAGS=''
 # Options
@@ -82,11 +80,19 @@ QEMU_FLAGS+='-m 1G '
 QEMU_FLAGS+='-vga vmware ' # Allows 32 bpp
 # Settings
 QEMU_FLAGS+='-cdrom target/ab-os-bel.iso '
-QEMU_FLAGS+='-serial stdio ' # Allows printing to console
 QEMU_FLAGS+='-no-reboot ' # If the os reboots, exit instead
-QEMU_FLAGS+="-drive if=pflash,format=raw,readonly=on,file=$OVMF " # Boot with UEFI
+if [[ $BIOS == "false" ]]; then
+  QEMU_FLAGS+="-drive if=pflash,format=raw,readonly=on,file=$OVMF " # Boot with UEFI
+fi
 # Tests
 QEMU_FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
+QEMU_FLAGS+='-serial stdio ' # Allows printing to console
+if [[ $TEST == "true" ]]; then
+  QEMU_FLAGS+='-display none ' # No display for tests
+fi
+if [[ $DEBUG == "true" ]]; then
+  QEMU_FLAGS+='-s -S ' # Debugging with gdb
+fi
 # CPU
 if [[ $AMD == "true" ]]; then
   QEMU_FLAGS+='-cpu EPYC ' # Emulated AMD CPU, no KVM (slow)
@@ -95,7 +101,11 @@ else
   QEMU_FLAGS+='-enable-kvm ' # Enable KVM
 fi
 
-qemu-system-x86_64 $QEMU_FLAGS $EXTRA_QEMU_FLAGS &
+if [[ $TEST == "true" && $DEBUG == "false" ]]; then
+  timeout --foreground $TEST_TIMEOUT qemu-system-x86_64 $QEMU_FLAGS &
+else
+  qemu-system-x86_64 $QEMU_FLAGS &
+fi
 
 qemu_pid=$!
 
@@ -103,17 +113,10 @@ if [[ $DEBUG == "true" ]]; then
   gdb \
     -ex "target remote localhost:1234" \
     -ex "set architecture i386:x86-64" \
-    -ex "hbreak src/main.rs:23" \
+    -ex "hbreak main" \
     -ex "c" \
     -ex "layout src" \
     $EXEC_PATH
 fi
 
-exit_code=0
-wait $qemu_pid || exit_code=$?
-
-if [ $exit_code -eq 33 ]; then
-  exit 0
-else
-  exit $exit_code
-fi
+wait $qemu_pid

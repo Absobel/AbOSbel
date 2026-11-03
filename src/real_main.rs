@@ -26,8 +26,6 @@ pub fn main() {
     println!("\n");
 
     // whatever you want
-    // let debug_exit_port = Port::new(0xf4);
-    // unsafe { debug_exit_port.outl(0x10) }; // Exit QEMU with code 0x10
 
     println!("\nEnd of program.");
 }
