@@ -61,6 +61,14 @@ impl Port<u32> {
     }
 }
 
+/// Function to wait for an I/O operation to complete when the hardware does not provide a way to do so
+pub fn wait() {
+    const DUMMY_PORT: Port<u8> = Port::new(0x80);
+    unsafe {
+        DUMMY_PORT.outb(0);
+    }
+}
+
 /// Name of the ports are based on what i use them for. They have more uses than jsut that
 /// Methods taken straight from <https://wiki.osdev.org/Serial_Ports>
 #[derive(Debug)]

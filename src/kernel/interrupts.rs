@@ -3,7 +3,7 @@
 use core::{arch::asm, ops::Deref};
 use spin::Once;
 
-use crate::gdt::KERNEL_CS;
+use crate::{gdt::KERNEL_CS, pic};
 
 static IDT_ARR: Once<IdtArr> = Once::new();
 
@@ -16,7 +16,7 @@ macro_rules! exception {
     ($name:ident, $txt:literal, $err:ident) => {
         pub(super) extern "x86-interrupt" fn $name(stack_frame: InterruptStackFrame, $err: u64) {
             panic!(
-                "{} at address {:#x} with error code: {}",
+                "{} at address {:#x} with error code: {:#x}",
                 $txt, stack_frame.rip, $err
             )
         }
@@ -103,6 +103,9 @@ pub fn init_idt() {
         idt_arr.set(0x13, handlers::simd_floating_point, NO_IST);
         idt_arr.set(0x14, handlers::virtualization, NO_IST);
         idt_arr.set_err(0x15, handlers::control_protection, NO_IST);
+
+        idt_arr.set(0x20, pic::handlers::timer, NO_IST);
+        idt_arr.set(0x21, pic::handlers::keyboard, NO_IST);
 
         idt_arr
     });
@@ -227,10 +230,10 @@ enum IDTGateType {
 
 #[derive(Debug)]
 #[repr(C)]
-struct InterruptStackFrame {
-    rip: u64,
-    cs: u64,
-    rflags: u64,
-    rsp: u64,
-    ss: u64,
+pub struct InterruptStackFrame {
+    pub rip: u64,
+    pub cs: u64,
+    pub rflags: u64,
+    pub rsp: u64,
+    pub ss: u64,
 }

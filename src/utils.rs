@@ -35,7 +35,7 @@ pub fn hlt_loop() -> ! {
 #[repr(u32)]
 pub enum QemuExitCode {
     Success = 0x10, // (0x10 << 1) | 1 = 33
-    Failed = 0x11, // (0x11 << 1) | 1 = 35
+    Failed = 0x11,  // (0x11 << 1) | 1 = 35
 }
 
 pub fn exit_qemu(exit_code: QemuExitCode) -> ! {

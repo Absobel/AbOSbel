@@ -50,6 +50,7 @@ pub enum Reg {
     Edx,
 }
 
+#[expect(dead_code)]
 impl Reg {
     const fn get(self, r: &CpuidResult) -> u32 {
         match self {
@@ -62,7 +63,7 @@ impl Reg {
 }
 
 /// cpuid is always available cause it's checked for in the asm bootstrap
-#[expect(dead_code)]
+#[derive(Debug, Clone, Copy)]
 pub struct Feature {
     leaf: u32,
     subleaf: u32,
@@ -70,8 +71,8 @@ pub struct Feature {
     reg: Reg,
 }
 
+#[expect(dead_code)]
 impl Feature {
-    #[expect(dead_code)]
     pub const fn new(leaf: u32, subleaf: u32, bit: u8, reg: Reg) -> Self {
         Self {
             leaf,
@@ -81,19 +82,42 @@ impl Feature {
         }
     }
 
-    #[expect(dead_code)]
-    #[must_use]
-    pub fn cpu_has_feature(&self) -> bool {
+    pub fn cpu_has_feature(&self) -> Result<(), UnsupportedFeature> {
         // Will always panic for extended leaves, but those are not used yet, so it's fine
         debug_assert!(
             self.leaf <= MAX_CPUID_LEAF.get().copied().expect("Init CPUID first"),
             "CPUID leaf {} is not supported by this CPU",
             self.leaf
         );
-        self.reg
+        let is_available = self
+            .reg
             .get(&core::arch::x86_64::__cpuid_count(self.leaf, self.subleaf))
             & (1 << self.bit)
-            != 0
+            != 0;
+        if !is_available {
+            return Err(UnsupportedFeature::new(*self));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UnsupportedFeature {
+    feature: Feature,
+}
+impl UnsupportedFeature {
+    pub const fn new(feature: Feature) -> Self {
+        Self { feature }
+    }
+}
+impl Error for UnsupportedFeature {}
+impl Display for UnsupportedFeature {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "Unsupported CPU feature: leaf {}, subleaf {}, bit {}, reg {:?}",
+            self.feature.leaf, self.feature.subleaf, self.feature.bit, self.feature.reg
+        )
     }
 }
 
@@ -117,6 +141,12 @@ where
         }
     }
     r
+}
+
+pub fn enable_interrupts() {
+    unsafe {
+        asm!("sti", options(nostack, preserves_flags));
+    }
 }
 
 // MSR //

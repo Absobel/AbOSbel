@@ -1,3 +1,8 @@
+### What i'm working on currently
+
+* Fix the bugs Claude mentioned in the Test Artifact Document
+* Fix the deadlock between interrupt handlers and the framebuffer actions (println can't write on lock held by the framebuffer)
+
 ### Testing
 
 * Do the rest of the integration tests

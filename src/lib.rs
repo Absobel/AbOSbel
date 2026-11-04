@@ -8,11 +8,11 @@ mod kernel;
 pub mod real_main;
 mod utils;
 
+pub use utils::{QemuExitCode, exit_qemu, hlt_loop, panic_report};
 #[doc(hidden)]
-pub use framebuffer::_print;
-pub use utils::{hlt_loop, panic_report, exit_qemu, QemuExitCode};
+pub use {framebuffer::_print, io::_serial_print};
 
-use kernel::{allocator, framebuffer, gdt, interrupts, io, x86};
+use kernel::{allocator, framebuffer, gdt, interrupts, io, pic, x86};
 use multiboot2::{BootInformation, BootInformationHeader, LoadError};
 use spin::Once;
 
@@ -23,6 +23,7 @@ pub mod init {
     pub use crate::interrupts::init_idt as interrupts;
     pub use crate::io::init_serial as serial;
     pub use crate::load_multiboot as multiboot;
+    pub use crate::pic::init as pic;
     pub use crate::x86::init_cpuid as cpuid;
 }
 
@@ -45,13 +46,14 @@ pub fn initialization(multiboot_info_addr: usize) {
     let _ = init::serial();
     println!("Initializing ab_os_bel...");
 
-    init::gdt(); // Initialize the segmentation for interruption stacks
-    init::interrupts(); // Initialize the interruptions and the handlers
-    unsafe { init::multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
-    init::allocator(); // Initialize the physical memory allocator
-    init::framebuffer();
     init::cpuid().unwrap_or_else(|e| {
         println!("{e}");
     });
+    init::gdt(); // Initialize the segmentation for interruption stacks
+    init::interrupts(); // Initialize the interruptions and the handlers
+    init::pic();
+    unsafe { init::multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
+    init::allocator(); // Initialize the physical memory allocator
+    init::framebuffer();
     println!("ab_os_bel initialized.\n");
 }
