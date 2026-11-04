@@ -115,6 +115,7 @@ check_long_mode:
 
 /**
  * Error function : writes an error message to the screen and halts the CPU.
+ * TODO: this doesn't print anything when booting under UEFI
 */
 error:
     mov dword ptr [0xb8000], 0x4f524f45
@@ -131,7 +132,7 @@ error:
 .SET NB_P3_TABLES, 1
 .SET NB_P4_TABLES, 1
 
-.SET P2_TABLE_NB_ENTRIES, 512*NB_P2_TABLES /* 16 GiB of RAM cauz huge pages */
+.SET P2_TABLE_NB_ENTRIES, 512*NB_P2_TABLES /* 4 GiB of RAM cauz huge pages */
 .SET P3_TABLE_NB_ENTRIES, NB_P2_TABLES
 .SET P4_TABLE_NB_ENTRIES, NB_P3_TABLES
 

@@ -4,7 +4,9 @@ use core::fmt::{self, Write};
 
 use spin::{Mutex, Once};
 
-use crate::{MULTIBOOT2_INFO, io::SERIAL1, x86::without_interrupts};
+use crate::{
+    MULTIBOOT2_INFO, io::SERIAL1, kernel::interrupts::IRQ_BUFFER, x86::without_interrupts,
+};
 
 use super::{ScreenBuffer, Writer};
 
@@ -106,10 +108,20 @@ pub fn _print(args: fmt::Arguments) {
                 .write_fmt(args)
                 .expect("Printing to serial failed");
         }
-        if let Some(w) = WRITER.get() {
-            w.lock()
-                .write_fmt(args)
-                .expect("Printing to Framebuffer failed");
+        if let Some(w) = WRITER.get()
+            && let Some(b) = BUFFER.get()
+        {
+            let mut irq_buffer = IRQ_BUFFER.get().expect("IRQ buffer required").lock();
+            if let Some(mut w) = w.try_lock()
+                && !b.is_locked()
+            {
+                irq_buffer.print_all(&mut *w);
+                w.write_fmt(args).expect("Printing to Framebuffer failed");
+            } else {
+                irq_buffer
+                    .write_fmt(args)
+                    .expect("Writing to IRQ buffer failed");
+            }
         }
     });
 }

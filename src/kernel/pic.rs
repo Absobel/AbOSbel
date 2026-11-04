@@ -59,6 +59,7 @@ pub fn init() {
         io::wait();
     }
 
+    // mask_irq(Mask::Clear, Interrupts::Timer);
     mask_irq(Mask::Clear, Interrupts::Cascade);
     mask_irq(Mask::Clear, Interrupts::Keyboard);
 
@@ -104,11 +105,10 @@ fn send_eoi(irq: Interrupts) {
 
 // Handlers
 
-// TODO: fix deadlock with println! not working when the rest of the os writes on the framebuffer
 macro_rules! pic_interrupt {
     ($name:ident, $txt:literal, $irq:expr) => {
         pub extern "x86-interrupt" fn $name(stack_frame: InterruptStackFrame) {
-            serial_println!("PIC Interrupt {} at address {:#x}", $txt, stack_frame.rip);
+            println!("PIC Interrupt {} at address {:#x}", $txt, stack_frame.rip);
             crate::kernel::pic::send_eoi($irq);
         }
     };
@@ -117,7 +117,7 @@ macro_rules! pic_interrupt {
 pub mod handlers {
     use crate::{
         kernel::{interrupts::InterruptStackFrame, pic::Interrupts},
-        serial_println,
+        println,
     };
 
     pic_interrupt!(timer, "TIMER", Interrupts::Timer);

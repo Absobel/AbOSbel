@@ -1,5 +1,6 @@
 #[macro_export]
 macro_rules! print {
+    () => ($crate::_print(format_args!("")));
     ($($arg:tt)*) => ($crate::_print(format_args!($($arg)*)));
 }
 

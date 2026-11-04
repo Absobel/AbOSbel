@@ -31,8 +31,6 @@ pub fn init() {
     gdt.load();
 }
 
-// TODO : use bitflags everywhere
-
 ///// GDT
 
 /// Refers to the 8th byte of the GDT, which is the kernel code segment descriptor
@@ -77,6 +75,7 @@ impl Gdt {
                 "mov ss, ax",
                 kernel_cs = const KERNEL_CS,
                 tmp = out(reg) _,
+                out("ax") _,
             );
             // Make the cpu use the TSS
             asm!("ltr {0:x}", in(reg) TSS_SELECTOR);
