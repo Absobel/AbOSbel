@@ -1,7 +1,9 @@
 ### What i'm working on currently
 
-* Fix the bugs Claude mentioned in the Test Artifact Document
-* Fix the deadlock between interrupt handlers and the framebuffer actions (println can't write on lock held by the framebuffer)
+* Keyboard Scan codes, all that, map that to the right characters, make a state machine for the ctrl alt and all
+* Shadow buffer so that it runs at normal speed on real hardware
+* paging
+    * don't forget guard pages for stacks
 
 ### Testing
 
@@ -9,6 +11,7 @@
 
 ### The rest
 
+* Make it so that WRITER can't be unlocked while BUFFER is locked
 * Support BIOS for sure
 * After allocator, rewrite the graphical part and a lot of other things
     * rewrite buffer into a vec/smth

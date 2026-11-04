@@ -6,7 +6,6 @@ version = 4
 name = "ab-os-bel"
 version = "0.1.0"
 dependencies = [
- "bitflags",
  "multiboot2",
  "spin",
 ]

@@ -8,17 +8,18 @@
 use core::arch::asm;
 
 use crate::{
-    framebuffer::{self, BUFFER, CP437},
-    io::Port,
-    print, println,
+    framebuffer::{self, BUFFER, CP437}, io::Port, kernel::framebuffer::WRITER, print, println,
 };
 
 pub fn main() {
-    let red = framebuffer::Color::new(255, 0, 0, 255); // RGB(255, 0, 0)
-    let lavander = framebuffer::Color::new(191, 148, 228, 255); // RGB(191, 148, 228)
+    // let red = framebuffer::Color::new(255, 0, 0, 255);
+    let lavender = framebuffer::Color::new(191, 148, 228, 255);
 
     let buffer = BUFFER.get().expect("Buffer required");
-    buffer.lock().clear(lavander);
+    buffer.lock().clear(lavender);
+    // let writer = WRITER.get().expect("Writer required");
+    // writer.lock().change_background_color(red);
+    // writer.lock().change_foreground_color(framebuffer::Color::new(255, 0, 0, 255));
 
     for c in CP437 {
         print!("{c}");

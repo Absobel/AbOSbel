@@ -1,11 +1,16 @@
 #![allow(clippy::fn_to_numeric_cast)]
 
 use core::{arch::asm, ops::Deref};
-use spin::Once;
+use spin::{Mutex, Once};
 
-use crate::{gdt::KERNEL_CS, pic};
+use crate::{
+    gdt::KERNEL_CS,
+    pic,
+    utils::{Message, RingBuffer},
+};
 
 static IDT_ARR: Once<IdtArr> = Once::new();
+pub static IRQ_BUFFER: Once<Mutex<RingBuffer<Message, 16>>> = Once::new();
 
 macro_rules! exception {
     ($name:ident, $txt:literal) => {
@@ -80,6 +85,8 @@ const NO_IST: u8 = 0;
 const DOUBLE_FAULT_IST: u8 = 1;
 
 pub fn init_idt() {
+    IRQ_BUFFER.call_once(|| Mutex::new(RingBuffer::new()));
+
     let idt_arr: &'static IdtArr = IDT_ARR.call_once(|| {
         let mut idt_arr = IdtArr::new();
 
@@ -178,7 +185,6 @@ impl Deref for IdtArr {
     }
 }
 
-// TODO : use bitflags
 #[repr(C, packed)]
 #[derive(Clone, Copy)]
 struct IDTEntry {
