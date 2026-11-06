@@ -107,8 +107,10 @@ fn send_eoi(irq: Interrupts) {
 
 macro_rules! pic_interrupt {
     ($name:ident, $txt:literal, $irq:expr) => {
-        pub extern "x86-interrupt" fn $name(stack_frame: InterruptStackFrame) {
-            println!("PIC Interrupt {} at address {:#x}", $txt, stack_frame.rip);
+        pub extern "x86-interrupt" fn $name(_stack_frame: InterruptStackFrame) {
+            // TODO: Translate the scan code
+            let scan_code = unsafe { $crate::kernel::pic::PS2_DATA_PORT.inb() };
+            println!("Interrupt: {}, Scan Code: {scan_code:#X}", $txt);
             crate::kernel::pic::send_eoi($irq);
         }
     };
@@ -123,3 +125,9 @@ pub mod handlers {
     pic_interrupt!(timer, "TIMER", Interrupts::Timer);
     pic_interrupt!(keyboard, "KEYBOARD", Interrupts::Keyboard);
 }
+
+// PS/2 Controller
+
+const PS2_DATA_PORT: Port<u8> = Port::new(0x60);
+const PS2_COMMAND_PORT: Port<u8> = Port::new(0x64);
+

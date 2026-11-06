@@ -17,7 +17,7 @@
     * rewrite buffer into a vec/smth
     * Adapt for different framebuffers colors and offset
 * Logging
-* APIC
+* APIC (better discovery for keyboard and mouse)
 * Write the multiboot part in rust, even the bootstrap if i'm feeling like it
 * Make podman connect to VNC for display (use a vnc argument to give it the `-display vnc=0.0.0.0:0`)
 

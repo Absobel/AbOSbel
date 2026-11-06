@@ -61,7 +61,6 @@ mod handlers {
         error_code
     );
 
-    // TODO: can deadlock if the writer locks are held. Whenever IRQs are enabled, keep the text to write after the lock is released
     pub(super) extern "x86-interrupt" fn breakpoint(stack_frame: InterruptStackFrame) {
         println!("BREAKPOINT at address {:#x}", stack_frame.rip);
     }
