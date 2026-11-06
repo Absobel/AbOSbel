@@ -1,6 +1,8 @@
 ### What i'm working on currently
 
 * Keyboard Scan codes, all that, map that to the right characters, make a state machine for the ctrl alt and all
+    * Decode scan codes -> keycodes + updates state machine of which keys are pressed or not
+    * gets packaged into an event to an event ring buffer that gets emptied from time to time
 * Shadow buffer so that it runs at normal speed on real hardware
 * paging
     * don't forget guard pages for stacks
