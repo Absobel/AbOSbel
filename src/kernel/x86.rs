@@ -50,7 +50,6 @@ pub enum Reg {
     Edx,
 }
 
-#[expect(dead_code)]
 impl Reg {
     const fn get(self, r: &CpuidResult) -> u32 {
         match self {
@@ -71,7 +70,6 @@ pub struct Feature {
     reg: Reg,
 }
 
-#[expect(dead_code)]
 impl Feature {
     pub const fn new(leaf: u32, subleaf: u32, bit: u8, reg: Reg) -> Self {
         Self {
@@ -151,31 +149,51 @@ pub fn enable_interrupts() {
 
 // MSR //
 
+const MSR: Feature = Feature::new(0x1, 0, 5, Reg::Edx);
 #[expect(dead_code)]
-unsafe fn read_msr(reg: usize) -> usize {
-    let (eax, edx): (u32, u32);
+const IA32_PAT_MSR: MsrRegister = MsrRegister::new(0x277);
 
-    unsafe {
-        asm!(
-            "rdmsr",
-            in("ecx") reg,
-            out("eax") eax,
-            out("edx") edx,
-        );
-    };
-    ((edx as usize) << 32) | eax as usize
+/// # Panics
+/// If the CPU doesn't support MSR
+pub fn init_msr() {
+    // TODO: i guess support when there's no msr? but like?
+    MSR.cpu_has_feature().unwrap_or_else(|e| panic!("{e}"));
+}
+
+pub struct MsrRegister {
+    reg: usize,
 }
 
 #[expect(dead_code)]
-unsafe fn write_msr(reg: usize, value: usize) {
-    let eax = value as u32;
-    let edx = (value >> 32) as u32;
-    unsafe {
-        asm!(
-            "wrmsr",
-            in("ecx") reg,
-            in("eax") eax,
-            in("edx") edx,
-        );
-    };
+impl MsrRegister {
+    pub const fn new(reg: usize) -> Self {
+        Self { reg }
+    }
+
+    pub unsafe fn read_msr(&self) -> usize {
+        let (eax, edx): (u32, u32);
+
+        unsafe {
+            asm!(
+                "rdmsr",
+                in("ecx") self.reg,
+                out("eax") eax,
+                out("edx") edx,
+            );
+        };
+        ((edx as usize) << 32) | eax as usize
+    }
+
+    pub unsafe fn write_msr(&self, value: usize) {
+        let eax = value as u32;
+        let edx = (value >> 32) as u32;
+        unsafe {
+            asm!(
+                "wrmsr",
+                in("ecx") self.reg,
+                in("eax") eax,
+                in("edx") edx,
+            );
+        };
+    }
 }

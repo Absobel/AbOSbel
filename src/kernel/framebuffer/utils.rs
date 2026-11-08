@@ -111,7 +111,7 @@ pub fn _print(args: fmt::Arguments) {
         if let Some(w) = WRITER.get()
             && let Some(b) = BUFFER.get()
         {
-            let mut irq_buffer = IRQ_BUFFER.get().expect("IRQ buffer required").lock();
+            let mut irq_buffer = IRQ_BUFFER.lock();
             if let Some(mut w) = w.try_lock()
                 && !b.is_locked()
             {

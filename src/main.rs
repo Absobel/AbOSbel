@@ -5,7 +5,7 @@
 
 use core::panic::PanicInfo;
 
-use ab_os_bel::{hlt_loop, initialization, panic_report, real_main};
+use ab_os_bel::{event_loop, hlt_loop, initialization, panic_report, real_main};
 
 // MAIN
 
@@ -15,7 +15,7 @@ pub extern "C" fn main(multiboot_info_addr: usize) -> ! {
 
     real_main::main();
 
-    hlt_loop()
+    event_loop();
 }
 
 #[panic_handler]

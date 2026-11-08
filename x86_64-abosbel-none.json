@@ -15,5 +15,7 @@
       "ld.lld": [
           "--script=linker.ld"
       ]
-    }
-  }
+    },
+    "max-atomic-width": 128,
+    "features": "+cx16"
+}

@@ -1,10 +1,9 @@
 ### What i'm working on currently
 
-* Package the state machine + keycode to an event and send it to an event queue
-    * Translate events to actual keys (a, b, c, Shift+a, etc) 
-* Shadow buffer so that it runs at normal speed on real hardware
 * paging
     * don't forget guard pages for stacks
+* Shadow buffer so that it runs at normal speed on real hardware
+    * Just make the reads read from the backbuffer and the writes write to both
 
 ### Testing
 
@@ -12,6 +11,7 @@
 
 ### The rest
 
+* Support AZERTY
 * Make it so that WRITER can't be unlocked while BUFFER is locked
 * Support BIOS for sure
 * After allocator, rewrite the graphical part and a lot of other things

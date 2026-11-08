@@ -175,6 +175,14 @@ impl Writer {
         for char in string.chars() {
             match char {
                 '\n' => self.new_line(),
+                '\x08' => {
+                    if self.column_position > 0 {
+                        self.column_position -= 1;
+                    } else {
+                        self.column_position = self.text_buffer.max_char_x - 1;
+                        self.anti_new_line();
+                    }
+                }
                 char => {
                     if self.column_position >= self.text_buffer.max_char_x {
                         self.new_line();
@@ -198,7 +206,7 @@ impl Writer {
         let max_char_y = self.text_buffer.max_char_y;
         self.text_buffer
             .clear_line(max_char_y - 1, self.background_code)
-            .expect("Is not out of bounds as it is a function called manually.");
+            .unwrap();
         self.column_position = 0;
     }
 
@@ -206,8 +214,19 @@ impl Writer {
         let text_len = self.text_buffer.max_char_x * (self.text_buffer.max_char_y - 1);
         self.text_buffer
             .move_slice_text(0, 1, text_len, 0, -1)
-            .expect("Is not out of bound as it is a function called manually.");
+            .unwrap();
         self.clear_line();
+    }
+
+    // TODO: make this return the column position to the last char. Will do that with an allocator
+    fn anti_new_line(&self) {
+        let text_len = self.text_buffer.max_char_x * (self.text_buffer.max_char_y - 1);
+        self.text_buffer
+            .move_slice_text(0, 0, text_len, 0, 1)
+            .unwrap();
+        self.text_buffer
+            .clear_line(0, self.background_code)
+            .unwrap();
     }
 }
 

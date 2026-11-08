@@ -10,7 +10,7 @@ use crate::{
 };
 
 static IDT_ARR: Once<IdtArr> = Once::new();
-pub static IRQ_BUFFER: Once<Mutex<RingBuffer<Message, 16>>> = Once::new();
+pub static IRQ_BUFFER: Mutex<RingBuffer<Message, 16>> = Mutex::new(RingBuffer::new());
 
 macro_rules! exception {
     ($name:ident, $txt:literal) => {
@@ -84,8 +84,6 @@ const NO_IST: u8 = 0;
 const DOUBLE_FAULT_IST: u8 = 1;
 
 pub fn init_idt() {
-    IRQ_BUFFER.call_once(|| Mutex::new(RingBuffer::new()));
-
     let idt_arr: &'static IdtArr = IDT_ARR.call_once(|| {
         let mut idt_arr = IdtArr::new();
 

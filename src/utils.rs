@@ -24,14 +24,13 @@ pub fn panic_report(info: &PanicInfo) {
 
 pub fn hlt_loop() -> ! {
     loop {
-        flush_ring();
         unsafe {
             asm!("hlt");
         }
     }
 }
 
-pub fn flush_ring() {
+pub fn flush_print_ring() {
     print!();
 }
 
@@ -110,31 +109,46 @@ impl Write for Message {
     }
 }
 
-pub struct RingBuffer<T: Copy + Default, const N: usize> {
-    buffer: [T; N],
+pub struct RingBuffer<T: Copy, const N: usize> {
+    buffer: [Option<T>; N],
     head: usize,
     tail: usize,
     dropped: usize,
 }
 
-impl<T: Copy + Default, const N: usize> RingBuffer<T, N> {
-    pub fn new() -> Self {
+impl<T: Copy, const N: usize> RingBuffer<T, N> {
+    pub const fn new() -> Self {
         Self {
-            buffer: [T::default(); N],
+            buffer: [None; N],
             head: 0,
             tail: 0,
             dropped: 0,
         }
     }
 
-    pub const fn push(&mut self, item: T) {
-        let next_head = (self.head + 1) % N;
-        if next_head == self.tail {
+    const fn is_full(&self) -> bool {
+        (self.head + 1) % N == self.tail
+    }
+
+    /// Overwrites the oldest item
+    pub const fn push_overwrite(&mut self, item: T) {
+        if self.is_full() {
             self.tail = (self.tail + 1) % N; // Drop the oldest item
             self.dropped += 1;
         }
-        self.buffer[self.head] = item;
+        // Can't fail, because we just made sure there is space
+        let _ = self.try_push(item);
+    }
+
+    pub const fn try_push(&mut self, item: T) -> Result<(), T> {
+        let next_head = (self.head + 1) % N;
+        if next_head == self.tail {
+            self.dropped += 1;
+            return Err(item); // Buffer is full
+        }
+        self.buffer[self.head] = Some(item);
         self.head = next_head;
+        Ok(())
     }
 
     pub const fn try_pop(&mut self) -> Option<T> {
@@ -143,7 +157,7 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, N> {
         }
         let item = self.buffer[self.tail];
         self.tail = (self.tail + 1) % N;
-        Some(item)
+        item
     }
 
     pub const fn reset_drop_count(&mut self) -> usize {
@@ -155,14 +169,14 @@ impl<T: Copy + Default, const N: usize> RingBuffer<T, N> {
 
 impl<const N: usize> fmt::Write for RingBuffer<Message, N> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.push(Message::from(s));
+        self.push_overwrite(Message::from(s));
         Ok(())
     }
 
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
         let mut msg = Message::default();
         msg.write_fmt(args)?;
-        self.push(msg);
+        self.push_overwrite(msg);
         Ok(())
     }
 }

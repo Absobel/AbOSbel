@@ -8,7 +8,10 @@
 use core::arch::asm;
 
 use crate::{
-    framebuffer::{self, BUFFER, CP437}, io::Port, kernel::framebuffer::WRITER, print, println,
+    framebuffer::{self, BUFFER, CP437},
+    io::Port,
+    kernel::framebuffer::WRITER,
+    print, println,
 };
 
 pub fn main() {
@@ -28,7 +31,7 @@ pub fn main() {
 
     // whatever you want
 
-    println!("\nEnd of program.");
+    println!("\nEnd of program.\n");
 }
 
 fn division_by_zero() {

@@ -77,7 +77,7 @@ fi
 QEMU_FLAGS=''
 # Options
 QEMU_FLAGS+='-m 1G '
-QEMU_FLAGS+='-vga vmware ' # Allows 32 bpp
+QEMU_FLAGS+='-vga std '
 # Settings
 QEMU_FLAGS+='-cdrom target/ab-os-bel.iso '
 QEMU_FLAGS+='-no-reboot ' # If the os reboots, exit instead
@@ -89,6 +89,8 @@ QEMU_FLAGS+='-device isa-debug-exit,iobase=0xf4,iosize=0x04 '
 QEMU_FLAGS+='-serial stdio ' # Allows printing to console
 if [[ $TEST == "true" ]]; then
   QEMU_FLAGS+='-display none ' # No display for tests
+else
+  QEMU_FLAGS+='-display gtk,zoom-to-fit=on '
 fi
 if [[ $DEBUG == "true" ]]; then
   QEMU_FLAGS+='-s -S ' # Debugging with gdb
