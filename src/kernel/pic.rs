@@ -10,7 +10,7 @@ use crate::{
         io::{self, Port},
         x86::{self, without_interrupts},
     },
-    print,
+    print, println,
     utils::RingBuffer,
 };
 
@@ -70,7 +70,7 @@ pub fn init() {
         io::wait();
     }
 
-    // mask_irq(Mask::Clear, Interrupts::Timer);
+    mask_irq(Mask::Clear, Interrupts::Timer);
     mask_irq(Mask::Clear, Interrupts::Cascade);
     mask_irq(Mask::Clear, Interrupts::Keyboard);
 
@@ -116,6 +116,7 @@ fn send_eoi(irq: Interrupts) {
 
 // Handlers
 
+#[expect(unused_macros)]
 macro_rules! pic_interrupt {
     ($name:ident, $txt:literal, $irq:expr) => {
         pub extern "x86-interrupt" fn $name(stack_frame: InterruptStackFrame) {
@@ -130,26 +131,15 @@ macro_rules! pic_interrupt {
 
 #[expect(clippy::wildcard_imports)]
 pub mod handlers {
-    use crate::{
-        kernel::{interrupts::InterruptStackFrame, pic::*},
-        println,
-    };
+    use crate::kernel::{interrupts::InterruptStackFrame, pic::*};
 
-    pic_interrupt!(timer, "TIMER", Interrupts::Timer);
+    pub extern "x86-interrupt" fn timer(_stack_frame: InterruptStackFrame) {
+        send_eoi(Interrupts::Timer);
+    }
 
     pub extern "x86-interrupt" fn keyboard(_stack_frame: InterruptStackFrame) {
         let scancode: u8 = unsafe { PS2_DATA_PORT.inb() };
-        let key_event = KeyEvent::from_scancode(scancode);
-        match key_event {
-            Ok(event) => {
-                // Discard the event if the ring buffer is full
-                let _ = KEY_RING_BUFFER.lock().try_push(event);
-            }
-            Err(e @ KeyEventError::UnknownKey(_)) => {
-                println!("[PIC] Error: {}", e);
-            }
-            _ => {}
-        }
+        handle_scancode(scancode);
         send_eoi(Interrupts::Keyboard);
     }
 }
@@ -157,16 +147,44 @@ pub mod handlers {
 // PS/2 Controller
 
 const PS2_DATA_PORT: Port<u8> = Port::new(0x60);
-#[expect(dead_code)]
 const PS2_COMMAND_PORT: Port<u8> = Port::new(0x64);
 
 pub static WAITING_FOR_EXTENDED: AtomicBool = AtomicBool::new(false);
 static KEY_STATE_MACHINE: AtomicU128 = AtomicU128::new(KeyStateMachine::new().0);
 pub static KEY_RING_BUFFER: Mutex<RingBuffer<KeyEvent, 16>> = Mutex::new(RingBuffer::new());
+// TODO: add something to change that
+const KEYBOARD_LAYOUT: Layout = AZERTY_FR_LAYOUT;
 
 pub fn flush_key_events() {
     while let Some(event) = without_interrupts(|| KEY_RING_BUFFER.lock().try_pop()) {
         event.evaluate();
+    }
+
+    // To avoid a frozen keyboard because of a full pic buffer
+    loop {
+        let status = unsafe { PS2_COMMAND_PORT.inb() };
+        if status & 0x01 == 0 {
+            break;
+        } // output buffer empty
+        let scancode = unsafe { PS2_DATA_PORT.inb() };
+        if status & 0x20 != 0 {
+            continue;
+        } // mouse byte, drop it
+        handle_scancode(scancode); // your current ISR body
+    }
+}
+
+fn handle_scancode(scancode: u8) {
+    let key_event = KeyEvent::from_scancode(scancode);
+    match key_event {
+        Ok(event) => {
+            // Discard the event if the ring buffer is full
+            let _ = KEY_RING_BUFFER.lock().try_push(event);
+        }
+        Err(e @ KeyEventError::UnknownKey(_)) => {
+            println!("[PIC] Error: {}", e);
+        }
+        _ => {}
     }
 }
 
@@ -195,10 +213,14 @@ impl KeyEvent {
             if self.state_machine.is_key_pressed(PhysicalKey::LeftShift)
                 || self.state_machine.is_key_pressed(PhysicalKey::RightShift)
             {
-                if let Some(c) = QWERTY_US_LAYOUT_SHIFT[self.key_state.key as usize] {
+                if let Some(c) = KEYBOARD_LAYOUT.shift[self.key_state.key as usize] {
                     print!("{}", c);
                 }
-            } else if let Some(c) = QWERTY_US_LAYOUT_NORMAL[self.key_state.key as usize] {
+            } else if self.state_machine.is_key_pressed(PhysicalKey::RightAlt) {
+                if let Some(altgr) = KEYBOARD_LAYOUT.altgr && let Some(c) = altgr[self.key_state.key as usize] {
+                    print!("{}", c);
+                }
+            } else if let Some(c) = KEYBOARD_LAYOUT.normal[self.key_state.key as usize] {
                 print!("{}", c);
             }
         }
@@ -412,6 +434,29 @@ pub enum PhysicalKey {
     Pause,
 }
 
+#[expect(dead_code)]
+pub struct Layout {
+    normal: [Option<char>; 128],
+    shift: [Option<char>; 128],
+    numlock: [Option<char>; 128],
+    altgr: Option<[Option<char>; 128]>,
+}
+
+#[expect(dead_code)]
+const QWERTY_US_LAYOUT: Layout = Layout {
+    normal: QWERTY_US_LAYOUT_NORMAL,
+    shift: QWERTY_US_LAYOUT_SHIFT,
+    numlock: QWERTY_US_LAYOUT_NUMLOCK,
+    altgr: None,
+};
+
+const AZERTY_FR_LAYOUT: Layout = Layout {
+    normal: AZERTY_FR_LAYOUT_NORMAL,
+    shift: AZERTY_FR_LAYOUT_SHIFT,
+    numlock: QWERTY_US_LAYOUT_NUMLOCK,
+    altgr: Some(AZERTY_FR_LAYOUT_ALTGR),
+};
+
 const fn layout(pairs: &[(PhysicalKey, char)]) -> [Option<char>; 128] {
     let mut table = [None; 128];
     let mut i = 0;
@@ -472,7 +517,7 @@ pub const QWERTY_US_LAYOUT_SHIFT: [Option<char>; 128] = {
 };
 
 /// Only applies when `NumLock` is on
-#[expect(clippy::enum_glob_use, dead_code)]
+#[expect(clippy::enum_glob_use)]
 #[rustfmt::skip]
 pub const QWERTY_US_LAYOUT_NUMLOCK: [Option<char>; 128] = {
     use PhysicalKey::*;
@@ -481,5 +526,64 @@ pub const QWERTY_US_LAYOUT_NUMLOCK: [Option<char>; 128] = {
         (Keypad4, '4'), (Keypad5, '5'), (Keypad6, '6'),
         (Keypad1, '1'), (Keypad2, '2'), (Keypad3, '3'),
         (Keypad0, '0'), (KeypadPeriod, '.'),
+    ])
+};
+
+// TODO: add the missing keys when ^ and ¨ are supported as dead keys
+#[expect(clippy::enum_glob_use)]
+#[rustfmt::skip]
+pub const AZERTY_FR_LAYOUT_NORMAL: [Option<char>; 128] = {
+    use PhysicalKey::*;
+    layout(&[
+        (Backtick, '²'),
+        (One, '&'), (Two, 'é'), (Three, '"'), (Four, '\''), (Five, '('),
+        (Six, '-'), (Seven, 'è'), (Eight, '_'), (Nine, 'ç'), (Zero, 'à'),
+        (Minus, ')'), (Equal, '='),
+        (Q, 'a'), (W, 'z'), (E, 'e'), (R, 'r'), (T, 't'),
+        (Y, 'y'), (U, 'u'), (I, 'i'), (O, 'o'), (P, 'p'),
+        (RightBracket, '$'),
+        (A, 'q'), (S, 's'), (D, 'd'), (F, 'f'), (G, 'g'),
+        (H, 'h'), (J, 'j'), (K, 'k'), (L, 'l'),
+        (Semicolon, 'm'), (Apostrophe, 'ù'), (Backslash, '*'),
+        (NonUsBackslash, '<'),
+        (Z, 'w'), (X, 'x'), (C, 'c'), (V, 'v'), (B, 'b'), (N, 'n'),
+        (M, ','), (Comma, ';'), (Period, ':'), (Slash, '!'),
+        (Space, ' '), (Enter, '\n'),
+        (KeypadDivide, '/'), (KeypadMultiply, '*'), (KeypadMinus, '-'),
+        (KeypadPlus, '+'), (KeypadEnter, '\n'),
+    ])
+};
+
+#[expect(clippy::enum_glob_use)]
+#[rustfmt::skip]
+pub const AZERTY_FR_LAYOUT_SHIFT: [Option<char>; 128] = {
+    use PhysicalKey::*;
+    layout(&[
+        (One, '1'), (Two, '2'), (Three, '3'), (Four, '4'), (Five, '5'),
+        (Six, '6'), (Seven, '7'), (Eight, '8'), (Nine, '9'), (Zero, '0'),
+        (Minus, '°'), (Equal, '+'),
+        (Q, 'A'), (W, 'Z'), (E, 'E'), (R, 'R'), (T, 'T'),
+        (Y, 'Y'), (U, 'U'), (I, 'I'), (O, 'O'), (P, 'P'),
+        (RightBracket, '£'),
+        (A, 'Q'), (S, 'S'), (D, 'D'), (F, 'F'), (G, 'G'),
+        (H, 'H'), (J, 'J'), (K, 'K'), (L, 'L'),
+        (Semicolon, 'M'), (Apostrophe, '%'), (Backslash, 'µ'),
+        (NonUsBackslash, '>'),
+        (Z, 'W'), (X, 'X'), (C, 'C'), (V, 'V'), (B, 'B'), (N, 'N'),
+        (M, '?'), (Comma, '.'), (Period, '/'), (Slash, '§'),
+        (Space, ' '), (Enter, '\n'),
+        (KeypadDivide, '/'), (KeypadMultiply, '*'), (KeypadMinus, '-'),
+        (KeypadPlus, '+'), (KeypadEnter, '\n'),
+    ])
+};
+
+#[expect(clippy::enum_glob_use)]
+#[rustfmt::skip]
+pub const AZERTY_FR_LAYOUT_ALTGR: [Option<char>; 128] = {
+    use PhysicalKey::*;
+    layout(&[
+        (Two, '~'), (Three, '#'), (Four, '{'), (Five, '['), (Six, '|'),
+        (Seven, '`'), (Eight, '\\'), (Nine, '^'), (Zero, '@'),
+        (Minus, ']'), (Equal, '}'),
     ])
 };

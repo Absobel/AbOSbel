@@ -84,7 +84,7 @@ pub static WRITER: Once<Mutex<Writer>> = Once::new();
 
 /// # Panics
 /// This function will panic if the framebuffer tag is not present in the multiboot2 information.
-pub fn init_graphics() {
+pub fn init_graphics(scale_factor: usize) {
     let framebuffer_tag = MULTIBOOT2_INFO
         .get()
         .expect("Multiboot info required")
@@ -95,7 +95,7 @@ pub fn init_graphics() {
     // TODO: Write combining on this framebuffer, through PAT, maybe, i don't really care tbh but memorial for the MTRR that were never used. No wonder why the osdev wiki was wrong on this. It's legacy
 
     BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag)));
-    WRITER.call_once(|| Mutex::new(Writer::new(1)));
+    WRITER.call_once(|| Mutex::new(Writer::new(scale_factor)));
 }
 
 #[doc(hidden)]

@@ -28,7 +28,15 @@ pub fn main() {
         print!("{c}");
     }
     println!("\n");
-
+    
+    // TODO: Add centering support for text
+    println!("Machines\n");
+    println!("Empty towers of decaying silicon");
+    println!("Warm lights of a golden protection");
+    println!("I stand upon forgotten machines");
+    println!("A beating heart prying behind the screen");
+    println!();
+    
     // whatever you want
 
     println!("\nEnd of program.\n");
