@@ -1,6 +1,7 @@
 ### What i'm working on currently
 
-* Keyboard Scan codes, all that, map that to the right characters, make a state machine for the ctrl alt and all
+* Package the state machine + keycode to an event and send it to an event queue
+    * Translate events to actual keys (a, b, c, Shift+a, etc) 
 * Shadow buffer so that it runs at normal speed on real hardware
 * paging
     * don't forget guard pages for stacks
@@ -17,7 +18,7 @@
     * rewrite buffer into a vec/smth
     * Adapt for different framebuffers colors and offset
 * Logging
-* APIC
+* APIC (better discovery for keyboard and mouse)
 * Write the multiboot part in rust, even the bootstrap if i'm feeling like it
 * Make podman connect to VNC for display (use a vnc argument to give it the `-display vnc=0.0.0.0:0`)
 
