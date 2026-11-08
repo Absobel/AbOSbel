@@ -281,7 +281,7 @@ impl KeyStateMachine {
 enum KeyEventError {
     UnknownKey(u8),
     WaitingForExtended(u8),
-    Skip(u8)
+    Skip(u8),
 }
 
 impl Display for KeyEventError {

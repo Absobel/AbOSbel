@@ -172,6 +172,7 @@ impl Writer {
     /// # Errors
     /// This function will return an error if the text is out of bounds of the buffer.
     pub fn write_str(&mut self, string: &str) -> Result<(), OutOfBoundsError> {
+        self.cursor(false)?;
         for char in string.chars() {
             match char {
                 '\n' => self.new_line(),
@@ -199,7 +200,7 @@ impl Writer {
                 }
             }
         }
-        Ok(())
+        self.cursor(true)
     }
 
     fn clear_line(&mut self) {
@@ -228,6 +229,15 @@ impl Writer {
             .clear_line(0, self.background_code)
             .unwrap();
     }
+
+    fn cursor(&self, visible: bool) -> Result<(), OutOfBoundsError> {
+    if self.column_position >= self.text_buffer.max_char_x {
+        return Ok(());
+    }
+    let glyph = if visible { '▓' } else { ' ' };
+    self.text_buffer.write_char(glyph, self.column_position, self.text_buffer.max_char_y - 1,
+        self.background_code, self.foreground_code)
+}
 }
 
 impl fmt::Write for Writer {
