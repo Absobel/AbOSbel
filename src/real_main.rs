@@ -8,8 +8,7 @@
 use core::arch::asm;
 
 use crate::{
-    drivers::framebuffer::{BUFFER, screen::Color, text::CP437},
-    print, println,
+    drivers::framebuffer::{BUFFER, screen::Color, text::CP437}, memory::frame::{FRAME_ALLOCATOR, FrameAllocator}, print, println,
 };
 
 pub fn main() {
