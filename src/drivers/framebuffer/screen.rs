@@ -1,6 +1,6 @@
 use multiboot2::FramebufferTag;
 
-use crate::framebuffer::{OutOfBoundsError, usize_plus_isize};
+use crate::drivers::framebuffer::OutOfBoundsError;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -106,20 +106,20 @@ impl ScreenBuffer {
                 y * self.max_x + x + len,
                 self.max_x * self.max_y,
             ));
-        } else if !(0..self.max_x).contains(&(usize_plus_isize(x, dx)))
-            || !(0..self.max_y).contains(&(usize_plus_isize(y, dy)))
-            || (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx) + len
+        } else if !(0..self.max_x).contains(&(x.wrapping_add_signed(dx)))
+            || !(0..self.max_y).contains(&(y.wrapping_add_signed(dy)))
+            || (y.wrapping_add_signed(dy)) * self.max_x + (x.wrapping_add_signed(dx)) + len
                 > self.max_x * self.max_y
         {
             return Err(OutOfBoundsError::new_slice(
-                (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx),
-                (usize_plus_isize(y, dy)) * self.max_x + usize_plus_isize(x, dx) + len,
+                (y.wrapping_add_signed(dy)) * self.max_x + (x.wrapping_add_signed(dx)),
+                (y.wrapping_add_signed(dy)) * self.max_x + (x.wrapping_add_signed(dx)) + len,
                 self.max_x * self.max_y,
             ));
         }
 
         let idx = self.coord_to_pxl_offset(x, y);
-        let idx2 = self.coord_to_pxl_offset(usize_plus_isize(x, dx), usize_plus_isize(y, dy));
+        let idx2 = self.coord_to_pxl_offset(x.wrapping_add_signed(dx), y.wrapping_add_signed(dy));
         self.buffer.copy_within(idx..idx + len, idx2);
         Ok(())
     }

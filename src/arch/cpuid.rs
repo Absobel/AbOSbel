@@ -1,31 +1,12 @@
-use core::{
-    arch::{asm, x86_64::CpuidResult},
-    error::Error,
-    fmt::Display,
-};
+// CPUID ///
+
+use core::{arch::x86_64::CpuidResult, error::Error, fmt::Display};
 
 use spin::Once;
 
-// CPUID ///
-
-static MAX_CPUID_LEAF: Once<u32> = Once::new();
-
-#[derive(Debug, Clone, Copy)]
-pub struct UnsupportedCpuVendor([u8; 12]);
-impl Error for UnsupportedCpuVendor {}
-impl Display for UnsupportedCpuVendor {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "Unsupported CPU vendor: {}",
-            core::str::from_utf8(&self.0).unwrap_or("Unknown")
-        )
-    }
-}
-
 /// # Errors
 /// This function will return an error if the CPU vendor is not supported
-pub fn init_cpuid() -> Result<(), UnsupportedCpuVendor> {
+pub fn init() -> Result<(), UnsupportedCpuVendor> {
     let result = core::arch::x86_64::__cpuid(0);
     MAX_CPUID_LEAF.call_once(|| result.eax);
 
@@ -99,6 +80,8 @@ impl Feature {
     }
 }
 
+// ERRORS //
+
 #[derive(Debug, Clone, Copy)]
 pub struct UnsupportedFeature {
     feature: Feature,
@@ -119,81 +102,17 @@ impl Display for UnsupportedFeature {
     }
 }
 
-// INTERRUPTS //
+static MAX_CPUID_LEAF: Once<u32> = Once::new();
 
-pub fn without_interrupts<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    let r: R;
-    unsafe {
-        let rflags: usize;
-        asm!("pushfq; pop {}", out(reg) rflags, options(nomem, preserves_flags));
-        let enabled = rflags & (1 << 9) != 0;
-        if enabled {
-            asm!("cli", options(nostack, preserves_flags));
-        }
-        r = f();
-        if enabled {
-            asm!("sti", options(nostack, preserves_flags));
-        }
-    }
-    r
-}
-
-pub fn enable_interrupts() {
-    unsafe {
-        asm!("sti", options(nostack, preserves_flags));
-    }
-}
-
-// MSR //
-
-const MSR: Feature = Feature::new(0x1, 0, 5, Reg::Edx);
-#[expect(dead_code)]
-const IA32_PAT_MSR: MsrRegister = MsrRegister::new(0x277);
-
-/// # Panics
-/// If the CPU doesn't support MSR
-pub fn init_msr() {
-    // TODO: i guess support when there's no msr? but like?
-    MSR.cpu_has_feature().unwrap_or_else(|e| panic!("{e}"));
-}
-
-pub struct MsrRegister {
-    reg: usize,
-}
-
-#[expect(dead_code)]
-impl MsrRegister {
-    pub const fn new(reg: usize) -> Self {
-        Self { reg }
-    }
-
-    pub unsafe fn read_msr(&self) -> usize {
-        let (eax, edx): (u32, u32);
-
-        unsafe {
-            asm!(
-                "rdmsr",
-                in("ecx") self.reg,
-                out("eax") eax,
-                out("edx") edx,
-            );
-        };
-        ((edx as usize) << 32) | eax as usize
-    }
-
-    pub unsafe fn write_msr(&self, value: usize) {
-        let eax = value as u32;
-        let edx = (value >> 32) as u32;
-        unsafe {
-            asm!(
-                "wrmsr",
-                in("ecx") self.reg,
-                in("eax") eax,
-                in("edx") edx,
-            );
-        };
+#[derive(Debug, Clone, Copy)]
+pub struct UnsupportedCpuVendor([u8; 12]);
+impl Error for UnsupportedCpuVendor {}
+impl Display for UnsupportedCpuVendor {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "Unsupported CPU vendor: {}",
+            core::str::from_utf8(&self.0).unwrap_or("Unknown")
+        )
     }
 }

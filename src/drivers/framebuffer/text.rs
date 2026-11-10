@@ -2,7 +2,7 @@ use core::fmt;
 
 use spin::MutexGuard;
 
-use super::{BUFFER, Color, OutOfBoundsError, ScreenBuffer};
+use crate::drivers::framebuffer::{BUFFER, OutOfBoundsError, screen::{Color, ScreenBuffer}};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -231,13 +231,18 @@ impl Writer {
     }
 
     fn cursor(&self, visible: bool) -> Result<(), OutOfBoundsError> {
-    if self.column_position >= self.text_buffer.max_char_x {
-        return Ok(());
+        if self.column_position >= self.text_buffer.max_char_x {
+            return Ok(());
+        }
+        let glyph = if visible { '▓' } else { ' ' };
+        self.text_buffer.write_char(
+            glyph,
+            self.column_position,
+            self.text_buffer.max_char_y - 1,
+            self.background_code,
+            self.foreground_code,
+        )
     }
-    let glyph = if visible { '▓' } else { ' ' };
-    self.text_buffer.write_char(glyph, self.column_position, self.text_buffer.max_char_y - 1,
-        self.background_code, self.foreground_code)
-}
 }
 
 impl fmt::Write for Writer {

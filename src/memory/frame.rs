@@ -1,40 +1,12 @@
-use core::{
-    fmt::LowerHex,
-    ops::{Add, Range},
-};
+use core::ops::Range;
 
 use multiboot2::{MemoryArea, MemoryAreaType};
 use spin::{Mutex, Once};
 
 use crate::{
-    MULTIBOOT2_INFO,
-    utils::{align_down_pow2, align_up},
+    boot,
+    memory::{PhysicalAddress, kernel_end_addr, align_down_pow2, align_up},
 };
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PhysicalAddress(pub usize);
-
-impl LowerHex for PhysicalAddress {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        LowerHex::fmt(&self.0, f)
-    }
-}
-
-impl Add<usize> for PhysicalAddress {
-    type Output = Self;
-
-    fn add(self, rhs: usize) -> Self::Output {
-        Self(self.0 + rhs)
-    }
-}
-
-unsafe extern "C" {
-    static kernel_end: u8;
-}
-#[must_use]
-pub fn kernel_end_addr() -> PhysicalAddress {
-    PhysicalAddress(&raw const kernel_end as usize)
-}
 
 // TODO: find a way to do mutexes without_interrupt
 pub static FRAME_ALLOCATOR: Once<Mutex<FrameAllocator>> = Once::new();
@@ -55,7 +27,9 @@ impl FrameAllocator {
     const FRAME_SIZE: usize = 4096;
 
     fn new() -> Self {
-        let boot_info = MULTIBOOT2_INFO.get().expect("Multiboot info required");
+        let boot_info = boot::MULTIBOOT2_INFO
+            .get()
+            .expect("Multiboot info required");
         let memory_map = boot_info
             .memory_map_tag()
             .expect("Memory map tag required")
@@ -103,24 +77,3 @@ impl Iterator for FrameAllocator {
         }
     }
 }
-
-// TODO: heap allocator, for later
-
-// use core::ptr::null_mut;
-
-// use alloc::alloc::{GlobalAlloc, Layout};
-
-// pub struct Dummy;
-
-// unsafe impl GlobalAlloc for Dummy {
-//     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-//         null_mut()
-//     }
-
-//     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-//         panic!("dealloc should be never called")
-//     }
-// }
-
-// #[global_allocator]
-// static ALLOCATOR: Dummy = Dummy;

@@ -3,8 +3,8 @@ use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=linker.ld");
-    println!("cargo:rerun-if-changed=src/bootstrap/boot.s");
-    println!("cargo:rerun-if-changed=src/bootstrap/multiboot.s");
+    println!("cargo:rerun-if-changed=src/boot/boot.s");
+    println!("cargo:rerun-if-changed=src/boot/multiboot.s");
 
     let out_dir = env::var("OUT_DIR").unwrap();
 
@@ -13,7 +13,7 @@ fn main() {
             "--64",
             "-o",
             &format!("{out_dir}/multiboot.o"),
-            "src/bootstrap/multiboot.s",
+            "src/boot/multiboot.s",
         ])
         .status()
         .expect("Failed to execute as command for multiboot.s")
@@ -27,7 +27,7 @@ fn main() {
             "--64",
             "-o",
             &format!("{out_dir}/boot.o"),
-            "src/bootstrap/boot.s",
+            "src/boot/boot.s",
         ])
         .status()
         .expect("Failed to execute as command for boot.s")

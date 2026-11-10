@@ -1,72 +1,22 @@
 use core::{
-    arch::asm,
     error::Error,
     fmt::{self, Debug, Display, Formatter},
 };
 
-#[derive(Debug, Clone, Copy)]
-pub struct Port<T> {
-    port: u16,
-    _phantom: core::marker::PhantomData<T>,
-}
+use spin::{Mutex, Once};
 
-impl<T> Port<T> {
-    #[must_use]
-    pub const fn new(port: u16) -> Self {
-        Self {
-            port,
-            _phantom: core::marker::PhantomData,
-        }
-    }
-}
+use crate::arch::port::Port;
 
-impl Port<u8> {
-    #[must_use]
-    pub unsafe fn inb(self) -> u8 {
-        let data;
-        unsafe { asm!("in al, dx", in("dx") self.port, out("al") data) };
-        data
-    }
+pub static SERIAL1: Once<Mutex<Uart16550>> = Once::new();
 
-    pub unsafe fn outb(self, data: u8) {
-        unsafe { asm!("out dx, al", in("dx") self.port, in("al") data) };
-    }
-}
+const SERIAL1_PORT: u16 = 0x3F8;
 
-#[expect(dead_code)]
-impl Port<u16> {
-    #[must_use]
-    pub unsafe fn inw(self) -> u16 {
-        let data;
-        unsafe { asm!("in ax, dx", in("dx") self.port, out("ax") data) };
-        data
-    }
-
-    pub unsafe fn outw(self, data: u16) {
-        unsafe { asm!("out dx, ax", in("dx") self.port, in("ax") data) };
-    }
-}
-
-#[expect(dead_code)]
-impl Port<u32> {
-    #[must_use]
-    pub unsafe fn inl(self) -> u32 {
-        let data;
-        unsafe { asm!("in eax, dx", in("dx") self.port, out("eax") data) };
-        data
-    }
-
-    pub unsafe fn outl(self, data: u32) {
-        unsafe { asm!("out dx, eax", in("dx") self.port, in("eax") data) };
-    }
-}
-
-/// Function to wait for an I/O operation to complete when the hardware does not provide a way to do so
-pub fn wait() {
-    const DUMMY_PORT: Port<u8> = Port::new(0x80);
-    unsafe {
-        DUMMY_PORT.outb(0);
-    }
+/// # Errors
+/// This function will return an error if the serial port is faulty/doesn't exist
+pub fn init() -> Result<(), LoopbackMismatch> {
+    let serial_port = unsafe { Uart16550::new(SERIAL1_PORT)? };
+    SERIAL1.call_once(|| Mutex::new(serial_port));
+    Ok(())
 }
 
 /// Name of the ports are based on what i use them for. They have more uses than jsut that
@@ -181,5 +131,21 @@ impl Display for LoopbackMismatch {
             "Read 0x{:02X} from port 0x{:04X} in loopback test, expected 0xAE",
             self.data, self.port_addr
         )
+    }
+}
+
+pub struct EmergencySerialWriter;
+impl fmt::Write for EmergencySerialWriter {
+    // Just rewrote the write_str function but raw to the serial port without Mutex
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let data_port = Port::new(SERIAL1_PORT);
+        let line_status = Port::<u8>::new(SERIAL1_PORT + 5);
+        for b in s.bytes() {
+            while !unsafe { line_status.inb() & 0x20 != 0 } {
+                core::hint::spin_loop();
+            }
+            unsafe { data_port.outb(b) };
+        }
+        Ok(())
     }
 }

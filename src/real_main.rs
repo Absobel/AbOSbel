@@ -8,15 +8,13 @@
 use core::arch::asm;
 
 use crate::{
-    framebuffer::{self, BUFFER, CP437},
-    io::Port,
-    kernel::framebuffer::WRITER,
+    drivers::framebuffer::{BUFFER, screen::Color, text::CP437},
     print, println,
 };
 
 pub fn main() {
     // let red = framebuffer::Color::new(255, 0, 0, 255);
-    let lavender = framebuffer::Color::new(191, 148, 228, 255);
+    let lavender = Color::new(191, 148, 228, 255);
 
     let buffer = BUFFER.get().expect("Buffer required");
     buffer.lock().clear(lavender);
@@ -28,7 +26,7 @@ pub fn main() {
         print!("{c}");
     }
     println!("\n");
-    
+
     // TODO: Add centering support for text
     println!("Machines\n");
     println!("Empty towers of decaying silicon");
@@ -36,7 +34,7 @@ pub fn main() {
     println!("I stand upon forgotten machines");
     println!("A beating heart prying behind the screen");
     println!();
-    
+
     // whatever you want
 
     println!("\nEnd of program.\n");
