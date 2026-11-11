@@ -1,6 +1,9 @@
 use multiboot2::FramebufferTag;
 
-use crate::drivers::framebuffer::OutOfBoundsError;
+use crate::{
+    drivers::framebuffer::OutOfBoundsError,
+    memory::{PhysicalAddress, VirtualAddress},
+};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -34,14 +37,14 @@ impl ScreenBuffer {
         let pitch = framebuffer_tag.pitch() as usize;
         let bpp = framebuffer_tag.bpp() as usize;
         let len = (height * pitch) / (bpp / 8);
+        let address =
+            VirtualAddress::phys_to_virt(PhysicalAddress(framebuffer_tag.address() as usize));
         Self {
             max_x: width,
             max_y: height,
             pitch,
             bpp,
-            buffer: unsafe {
-                core::slice::from_raw_parts_mut(framebuffer_tag.address() as *mut Color, len)
-            },
+            buffer: unsafe { core::slice::from_raw_parts_mut(address.as_mut_ptr(), len) },
         }
     }
 

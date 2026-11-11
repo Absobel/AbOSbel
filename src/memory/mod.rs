@@ -1,6 +1,13 @@
 use core::{fmt::LowerHex, ops::Add};
 
 pub mod frame;
+pub mod paging;
+
+// TODO: make something check the max physical address: CPUID:0x80000008:EAX, bits 7:0, 2**N physical addresses
+const MAXPHYADDR: usize = 39;
+/// At boot, the first 4 GiB of physical memory are mapped to the higher half of the virtual space
+/// After mapping, it's the whole physical memory
+const VIRTUAL_ADDRESS_OFFSET: usize = 0xffff_8000_0000_0000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysicalAddress(pub usize);
@@ -16,6 +23,42 @@ impl Add<usize> for PhysicalAddress {
 
     fn add(self, rhs: usize) -> Self::Output {
         Self(self.0 + rhs)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct VirtualAddress(usize);
+
+impl VirtualAddress {
+    /// # Panics
+    /// The address should be a valid virtual address: bits 48-63 should be the same as bit 47
+    pub const fn new(addr: usize) -> Self {
+        let extended_bits = addr >> 47;
+        assert!(extended_bits == 0 || extended_bits == 0x1FFFF);
+        Self(addr)
+    }
+
+    const TEMP_PHYS_UPPER_BOUND: usize = 1 << 32; // 4 GiB
+
+    pub const fn phys_to_virt(phys: PhysicalAddress) -> Self {
+        assert!(phys.0 < Self::TEMP_PHYS_UPPER_BOUND);
+        Self(phys.0 + VIRTUAL_ADDRESS_OFFSET)
+    }
+
+    pub fn phys_window_to_phys(self) -> PhysicalAddress {
+        assert!(
+            (VIRTUAL_ADDRESS_OFFSET..VIRTUAL_ADDRESS_OFFSET + Self::TEMP_PHYS_UPPER_BOUND)
+                .contains(&self.0)
+        );
+        PhysicalAddress(self.0 - VIRTUAL_ADDRESS_OFFSET)
+    }
+
+    pub const fn as_ptr<T>(&self) -> *const T {
+        self.0 as *const T
+    }
+
+    pub const fn as_mut_ptr<T>(&self) -> *mut T {
+        self.0 as *mut T
     }
 }
 

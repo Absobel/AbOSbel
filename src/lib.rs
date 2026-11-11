@@ -21,8 +21,9 @@ use core::{
 
 pub use arch::hlt_loop;
 
-use crate::drivers::{
-    framebuffer::WRITER, keyboard::flush_key_events, serial::EmergencySerialWriter,
+use crate::{
+    drivers::{framebuffer::WRITER, keyboard::flush_key_events, serial::EmergencySerialWriter},
+    memory::{PhysicalAddress, VirtualAddress},
 };
 
 #[doc(hidden)]
@@ -47,6 +48,8 @@ pub mod init {
 /// # Panics
 /// This function will panic if the information can't be parsed as multiboot2 information.
 pub fn initialization(multiboot_info_addr: usize) {
+    let multiboot_info_addr = VirtualAddress::phys_to_virt(PhysicalAddress(multiboot_info_addr));
+
     let _ = init::serial();
     println!("Initializing ab_os_bel...");
 

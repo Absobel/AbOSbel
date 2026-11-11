@@ -1,9 +1,12 @@
 ### What i'm working on currently
 
 * paging
+    * rebuild the page tables with the kernel identity mapped + a window for the entire physical memory to the higher half of the kernel (huge pages)
+    * create a heap allocator
     * don't forget guard pages for stacks
 * Shadow buffer so that it runs at normal speed on real hardware
     * Just make the reads read from the backbuffer and the writes write to both
+* rewrite whatever is after the new allocator with the heap
 
 ### Testing
 

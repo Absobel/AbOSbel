@@ -57,7 +57,7 @@ pub fn flush_key_events() {
             continue;
         }
         arch::without_interrupts(|| {
-            handle_scancode(scancode); 
+            handle_scancode(scancode);
         });
     }
 }

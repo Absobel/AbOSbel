@@ -2,7 +2,10 @@ use core::fmt;
 
 use spin::MutexGuard;
 
-use crate::drivers::framebuffer::{BUFFER, OutOfBoundsError, screen::{Color, ScreenBuffer}};
+use crate::drivers::framebuffer::{
+    BUFFER, OutOfBoundsError,
+    screen::{Color, ScreenBuffer},
+};
 
 #[allow(dead_code)]
 #[derive(Debug)]
