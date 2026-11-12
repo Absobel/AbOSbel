@@ -38,7 +38,7 @@ impl VirtualAddress {
         Self(addr)
     }
 
-    const TEMP_PHYS_UPPER_BOUND: usize = 1 << 32; // 4 GiB
+    const TEMP_PHYS_UPPER_BOUND: usize = 1 << MAXPHYADDR; // 1 << 39
 
     pub const fn phys_to_virt(phys: PhysicalAddress) -> Self {
         assert!(phys.0 < Self::TEMP_PHYS_UPPER_BOUND);

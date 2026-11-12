@@ -5,6 +5,13 @@ set -euo pipefail
 # Sets the script to run in its own directory
 cd "$(dirname "$0")/.."
 
+# Is SecureBoot even disabled cause it won't run on it
+SB_VAR=/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c
+if [ -e "$SB_VAR" ] && [ "$(od -An -tu1 -j4 -N1 "$SB_VAR" | tr -d ' ')" = 1 ]; then
+    echo -e "\e[1;31mERROR:\e[0m SecureBoot is enabled, please disable it in your BIOS."
+    exit 1
+fi
+
 # Where the kernel will be
 INSTALL_DIR=/boot/abosbel
 # Where the kernel is built

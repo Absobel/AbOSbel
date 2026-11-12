@@ -22,6 +22,7 @@ _start:
     call check_multiboot
     call check_cpuid
     call check_long_mode
+    call check_1gib_pages
 
     call set_up_page_tables
     call enable_paging 
@@ -111,6 +112,19 @@ check_long_mode:
     mov al, '2'
     jmp error
 
+/**
+ * Checks if the CPU supports 1GiB pages
+*/
+check_1gib_pages:
+    mov eax, 0x80000001    /* argument for extended processor info */
+    cpuid                  /* returns various feature bits in ecx and edx */
+    test edx, 1 << 26      /* test if the PDPE1GB-bit is set in the D-register */
+    jz .no_1gib_pages      /* If it's not set, there is no 1GiB pages support */
+    ret
+.no_1gib_pages:
+    mov al, '3'
+    jmp error
+
 /* FUNCTIONS */
 
 /**
@@ -125,15 +139,13 @@ error:
     hlt
 
 /**
- * Initialize the page tables with 512 2MiB pages in P2 table.
+ * Initialize the page tables with 512 1GiB pages in P3 table.
 */
 
-.SET NB_P2_TABLES, 4
 .SET NB_P3_TABLES, 1
 .SET NB_P4_TABLES, 1
 
-.SET P2_TABLE_NB_ENTRIES, 512*NB_P2_TABLES /* 4 GiB of RAM cauz huge pages */
-.SET P3_TABLE_NB_ENTRIES, NB_P2_TABLES
+.SET P3_TABLE_NB_ENTRIES, 512
 .SET P4_TABLE_NB_ENTRIES, NB_P3_TABLES
 
 /* TODO : Reduce this part when paging will be dynamic */
@@ -149,34 +161,23 @@ set_up_page_tables:
     or eax, 0b11 # present + writable
     mov [p4_table + 256*8], eax
    
-    # map P3_TABLE_NB_ENTRIES P3 entries to P2 tables
-    mov ecx, 0       # counter variable
-    .map_p3_table:
-        # Compute the address of the ecx-th p2_table
-        # p2_table + 0x1000*ecx
-        imul eax, ecx, 0x1000
-        lea eax, [p2_table + eax]
-
-        or eax, 0b11                  # present + writable
-        mov [p3_table + ecx * 8], eax # map ecx-th entry
-
-        inc ecx            # increase counter
-        cmp ecx, P3_TABLE_NB_ENTRIES        # if counter == P3_TABLE_NB_ENTRIES, the whole P3 table is mapped
-        jne .map_p3_table  # else map the next entry
-
-    /* map each P2 entry to a huge 2MiB page */
+    /* map each P3 entry to a huge 1GiB page */
     mov ecx, 0         /* counter variable */
-    .map_p2_table:
-        /* map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx */
-        /* 0x200000*ecx */
-        imul eax, ecx, 0x200000
+    .map_p3_table:
+        /* map ecx-th P3 entry to a huge page that starts at address 1GiB*ecx */
+        /* 0x40000000*ecx */
+        mov eax, ecx
+        shl eax, 30
+        or eax, 0b10000011
+        mov [p3_table + ecx * 8], eax
 
-        or eax, 0b10000011 /* present + writable + huge */
-        mov [p2_table + ecx * 8], eax /* map ecx-th entry */
+        mov eax, ecx
+        shr eax, 2
+        mov [p3_table + ecx * 8 + 4], eax
 
         inc ecx            /* increase counter */
-        cmp ecx, P2_TABLE_NB_ENTRIES  /* if counter == 1024, the whole P2 tables are mapped */
-        jne .map_p2_table  /* else map the next entry */
+        cmp ecx, P3_TABLE_NB_ENTRIES  /* if counter == 512, the whole P3 table is mapped */
+        jne .map_p3_table  /* else map the next entry */
 
     ret
 
@@ -246,7 +247,6 @@ long_mode_start:
 /* TODO : Make the stack grow automatically one day */
 .SET STACK_SIZE, 0x1000*16
 /* TODO : Make paging dynamic, too lazy for that now tho */
-.SET P2_TABLE_SIZE, 0x1000*NB_P2_TABLES
 .SET P3_TABLE_SIZE, 0x1000*NB_P3_TABLES
 .SET P4_TABLE_SIZE, 0x1000*NB_P4_TABLES
 
@@ -256,8 +256,6 @@ p4_table:
     .space P4_TABLE_SIZE
 p3_table:
     .space P3_TABLE_SIZE
-p2_table:
-    .space P2_TABLE_SIZE
 
 /* allocate stack */
 stack_bottom:

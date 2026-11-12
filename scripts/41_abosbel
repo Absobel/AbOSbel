@@ -1,7 +1,31 @@
 #!/bin/sh
-exec tail -n +3 $0
+
+set -e
+
+. /usr/share/grub/grub-mkconfig_lib
+
+INSTALL_DIR="/boot/abosbel"
+KERNEL="$INSTALL_DIR/ab-os-bel"
+
+# Exit 0 and print nothing to stdout: a failing script aborts grub-mkconfig entirely
+if [ ! -e "$KERNEL" ]; then
+    echo "AbOSbel kernel not found in $INSTALL_DIR, skipping (run install.sh first)." >&2
+    exit 0
+fi
+
+# Partition(s) the kernel lives on, and its path as seen from that partition's root
+DEVICE=$("${grub_probe}" --target=device "$KERNEL")
+REL_PATH=$(make_system_path_relative_to_its_root "$KERNEL")
+# insmod + search lines that point $root at that partition
+ACCESS=$(prepare_grub_to_access_device $DEVICE | sed 's/^/    /')
+
+echo "Found AbOSbel kernel: $KERNEL" >&2
+
+cat << EOF
 menuentry "AbOSbel" {
     insmod all_video
     set gfxmode=1920x1080x32
-    multiboot2 /abosbel/ab-os-bel
+$ACCESS
+    multiboot2 $REL_PATH
 }
+EOF
