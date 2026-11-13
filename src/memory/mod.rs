@@ -1,13 +1,16 @@
-use core::{fmt::LowerHex, ops::Add};
+use core::{
+    fmt::LowerHex,
+    ops::Add,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 pub mod frame;
 pub mod paging;
 
-// TODO: make something check the max physical address: CPUID:0x80000008:EAX, bits 7:0, 2**N physical addresses
-const MAXPHYADDR: usize = 39;
-/// At boot, the first 4 GiB of physical memory are mapped to the higher half of the virtual space
+/// At boot, the first 512 GiB of physical memory are mapped to the higher half of the virtual space
 /// After mapping, it's the whole physical memory
 const VIRTUAL_ADDRESS_OFFSET: usize = 0xffff_8000_0000_0000;
+static END_OF_PAGING: AtomicUsize = AtomicUsize::new(1 << 39); // 512 GiB mapped at boot
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysicalAddress(pub usize);
@@ -38,19 +41,24 @@ impl VirtualAddress {
         Self(addr)
     }
 
-    const TEMP_PHYS_UPPER_BOUND: usize = 1 << MAXPHYADDR; // 1 << 39
-
-    pub const fn phys_to_virt(phys: PhysicalAddress) -> Self {
-        assert!(phys.0 < Self::TEMP_PHYS_UPPER_BOUND);
+    pub fn phys_to_virt(phys: PhysicalAddress) -> Self {
+        assert!(phys.0 < END_OF_PAGING.load(Ordering::Relaxed));
         Self(phys.0 + VIRTUAL_ADDRESS_OFFSET)
     }
 
     pub fn phys_window_to_phys(self) -> PhysicalAddress {
         assert!(
-            (VIRTUAL_ADDRESS_OFFSET..VIRTUAL_ADDRESS_OFFSET + Self::TEMP_PHYS_UPPER_BOUND)
+            (VIRTUAL_ADDRESS_OFFSET
+                ..VIRTUAL_ADDRESS_OFFSET + END_OF_PAGING.load(Ordering::Relaxed))
                 .contains(&self.0)
         );
         PhysicalAddress(self.0 - VIRTUAL_ADDRESS_OFFSET)
+    }
+
+    /// # Safety
+    /// The caller must ensure that the virtual address is valid
+    pub const unsafe fn identity_map(phys: PhysicalAddress) -> Self {
+        Self(phys.0)
     }
 
     pub const fn as_ptr<T>(&self) -> *const T {
@@ -63,11 +71,22 @@ impl VirtualAddress {
 }
 
 unsafe extern "C" {
+    static kernel_start: u8;
+}
+unsafe extern "C" {
     static kernel_end: u8;
 }
 #[must_use]
+pub fn kernel_start_addr() -> PhysicalAddress {
+    let addr = &raw const kernel_start as usize;
+    assert_eq!(addr % 4096, 0, "kernel_start is not page aligned");
+    PhysicalAddress(addr)
+}
+#[must_use]
 pub fn kernel_end_addr() -> PhysicalAddress {
-    PhysicalAddress(&raw const kernel_end as usize)
+    let addr = &raw const kernel_end as usize;
+    assert_eq!(addr % 4096, 0, "kernel_end is not page aligned");
+    PhysicalAddress(addr)
 }
 
 #[must_use]

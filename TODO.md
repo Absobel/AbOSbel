@@ -1,9 +1,7 @@
 ### What i'm working on currently
 
 * paging
-    * Set the MSR EFER.NXE (bit 11 of MSR 0xC0000080) on in arch/msr.rs for non executable pages
-    * rebuild the page tables with the kernel identity mapped + a window for the entire physical memory to the higher half of the kernel (huge pages)
-    * TLB FLushes whatever somewhere?
+    * TLB flush for an eventual unmap function in paging
     * create a heap allocator
     * don't forget guard pages for stacks
 * Shadow buffer so that it runs at normal speed on real hardware

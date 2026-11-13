@@ -2,7 +2,7 @@ use multiboot2::FramebufferTag;
 
 use crate::{
     drivers::framebuffer::OutOfBoundsError,
-    memory::{PhysicalAddress, VirtualAddress},
+    memory::VirtualAddress,
 };
 
 #[repr(C)]
@@ -31,14 +31,13 @@ pub struct ScreenBuffer {
 // Also take into account the offset given by the framebuffer tag
 impl ScreenBuffer {
     #[must_use]
-    pub const fn new(framebuffer_tag: &FramebufferTag) -> Self {
+    pub const fn new(framebuffer_tag: &FramebufferTag, addr: VirtualAddress) -> Self {
         let width = framebuffer_tag.width() as usize;
         let height = framebuffer_tag.height() as usize;
         let pitch = framebuffer_tag.pitch() as usize;
         let bpp = framebuffer_tag.bpp() as usize;
         let len = (height * pitch) / (bpp / 8);
-        let address =
-            VirtualAddress::phys_to_virt(PhysicalAddress(framebuffer_tag.address() as usize));
+        let address = addr;
         Self {
             max_x: width,
             max_y: height,

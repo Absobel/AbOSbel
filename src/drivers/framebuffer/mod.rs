@@ -6,6 +6,10 @@ use spin::{Mutex, Once};
 use crate::{
     boot,
     drivers::framebuffer::{screen::ScreenBuffer, text::Writer},
+    memory::{
+        self,
+        paging::{L4_TABLE, PageSize, Size4K},
+    },
 };
 
 pub static BUFFER: Once<Mutex<ScreenBuffer>> = Once::new();
@@ -21,9 +25,27 @@ pub fn init(scale_factor: usize) {
         .expect("Framebuffer required")
         .expect("Framebuffer required");
 
+    let addr_start = memory::PhysicalAddress(memory::align_down_pow2(
+        framebuffer_tag.address() as usize,
+        1 << Size4K::SHIFT,
+    ));
+    let size_bytes = framebuffer_tag.pitch() as usize * framebuffer_tag.height() as usize;
+    let addr_end = memory::PhysicalAddress(memory::align_up(
+        addr_start.0 + size_bytes,
+        1 << Size4K::SHIFT,
+    ));
+    let framebuff_virt = memory::paging::map_mmio(
+        &mut L4_TABLE.get().unwrap().lock(),
+        addr_start,
+        addr_end.0 - addr_start.0,
+        true,
+        false,
+        false,
+    );
+
     // TODO: Write combining on this framebuffer, through PAT, maybe, i don't really care tbh but memorial for the MTRR that were never used. No wonder why the osdev wiki was wrong on this. It's legacy
 
-    BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag)));
+    BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag, framebuff_virt)));
     WRITER.call_once(|| Mutex::new(Writer::new(scale_factor)));
 }
 

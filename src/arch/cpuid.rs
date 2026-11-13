@@ -61,6 +61,11 @@ impl Feature {
         }
     }
 
+    pub fn read(&self) -> u32 {
+        self.reg
+            .get(&core::arch::x86_64::__cpuid_count(self.leaf, self.subleaf))
+    }
+
     pub fn cpu_has_feature(&self) -> Result<(), UnsupportedFeature> {
         // Will always panic for extended leaves, but those are not used yet, so it's fine
         debug_assert!(

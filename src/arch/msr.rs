@@ -17,7 +17,6 @@ pub struct MsrRegister {
     reg: usize,
 }
 
-#[expect(dead_code)]
 impl MsrRegister {
     pub const fn new(reg: usize) -> Self {
         Self { reg }

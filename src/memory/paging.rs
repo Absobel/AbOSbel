@@ -1,19 +1,98 @@
-use core::marker::PhantomData;
+use core::{
+    arch::asm,
+    marker::PhantomData,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
-use crate::memory::{self, PhysicalAddress, VirtualAddress, frame::FRAME_ALLOCATOR};
+use spin::{Mutex, Once};
 
+use crate::{
+    arch::{cpuid, msr::MsrRegister},
+    memory::{
+        self, PhysicalAddress, VirtualAddress,
+        frame::{END_ADDRESS, FRAME_ALLOCATOR},
+    },
+};
+
+const MSR_EFER: MsrRegister = MsrRegister::new(0xC000_0080);
+const MAX_ADDR_FEATURE: cpuid::Feature = cpuid::Feature::new(0x8000_0008, 0, 0, cpuid::Reg::Eax);
+
+pub static L4_TABLE: Once<Mutex<&'static mut PageTable<L4>>> = Once::new();
+pub static MAXPHYADDR: AtomicUsize = AtomicUsize::new(0);
+
+/// # Panics
+/// Panics if there's no more memory. I don't think it can panic from other things since it's a new page table
 pub fn init() {
-    // TODO: build L4 table with the kernel identity mapped (kernel start rounded down to kernel end rounded up)
-    // TODO: map the whole physical memory to +OFFSET
+    MAXPHYADDR.store((MAX_ADDR_FEATURE.read() & 0xFF) as usize, Ordering::Relaxed);
+
+    // Set the MSR EFER.NXE bit for non executable pages
+    let efer = unsafe { MSR_EFER.read_msr() };
+    unsafe { MSR_EFER.write_msr(efer | (1 << 11)) };
+
+    let l4_frame = FRAME_ALLOCATOR
+        .lock()
+        .alloc()
+        .expect("No more memory for page tables");
+    l4_frame.zero();
+    let l4_table_ptr =
+        VirtualAddress::phys_to_virt(l4_frame.address()).as_mut_ptr::<PageTable<L4>>();
+    let l4_table = unsafe { &mut *l4_table_ptr };
+    L4_TABLE.call_once(|| Mutex::new(l4_table));
+    let mut l4_table = L4_TABLE.get().unwrap().lock();
+
+    // Identity map the kernel so that everything still runs after switching to the new page tables
+
+    let (kernel_start, kernel_end) = (memory::kernel_start_addr(), memory::kernel_end_addr());
+    unsafe {
+        map_range::<Size4K>(
+            &mut l4_table,
+            VirtualAddress::identity_map(kernel_start),
+            kernel_start,
+            kernel_end.0 - kernel_start.0,
+            true,
+            false,
+            true,
+        )
+        .unwrap();
+    };
+
+    // Map the whole physical memory to +OFFSET
+    let phys_mem_start = PhysicalAddress(0);
+    let phys_mem_end = PhysicalAddress(memory::align_up(
+        END_ADDRESS.load(Ordering::Relaxed),
+        1 << Size2M::SHIFT,
+    ));
+    unsafe {
+        map_range::<Size2M>(
+            &mut l4_table,
+            VirtualAddress::phys_to_virt(phys_mem_start),
+            phys_mem_start,
+            phys_mem_end.0 - phys_mem_start.0,
+            true,
+            false,
+            false,
+        )
+        .unwrap();
+    };
+
+    unsafe {
+        asm!(
+            "mov cr3, {0}",
+            in(reg) l4_frame.address().0,
+            options(nostack)
+        );
+    }
+
+    memory::END_OF_PAGING.store(phys_mem_end.0, Ordering::Relaxed);
 }
 
 #[repr(transparent)]
 #[derive(Clone, Copy)]
-struct RawEntry(u64);
+pub struct RawEntry(u64);
 
 /// Level 2-4 page table entry
 #[expect(clippy::struct_excessive_bools)]
-struct TableEntry {
+pub struct TableEntry {
     writable: bool,        // or read-only
     user_accessible: bool, // or supervisor-only
     /// Goes to both the cache and directly to memory
@@ -65,7 +144,10 @@ impl From<TableEntry> for RawEntry {
             raw |= 1 << 5;
         }
         // bits 12 .. (MAXPHYADDR -1)
-        raw |= entry.physical_address.0 as u64 & ((1 << memory::MAXPHYADDR) - 1) & !0xFFF;
+        assert!(entry.physical_address.0 < (1 << MAXPHYADDR.load(Ordering::Relaxed)));
+        raw |= entry.physical_address.0 as u64
+            & ((1 << MAXPHYADDR.load(Ordering::Relaxed)) - 1)
+            & !0xFFF;
         if entry.disabled_execute {
             raw |= 1 << 63;
         }
@@ -86,7 +168,7 @@ impl From<RawEntry> for TableEntry {
             cache_disabled: raw.0 & (1 << 4) != 0,
             accessed: raw.0 & (1 << 5) != 0,
             physical_address: PhysicalAddress(
-                raw.0 as usize & ((1 << memory::MAXPHYADDR) - 1) & !0xFFF,
+                raw.0 as usize & ((1 << MAXPHYADDR.load(Ordering::Relaxed)) - 1) & !0xFFF,
             ),
             disabled_execute: raw.0 & (1 << 63) != 0,
             free_territory_baby: (((raw.0 >> 6) & 0x1)
@@ -98,7 +180,7 @@ impl From<RawEntry> for TableEntry {
 
 /// Level 1 entries + Level 2 and 3 huge table entries
 #[expect(clippy::struct_excessive_bools)]
-struct PageEntry<S: PageSize> {
+pub struct PageEntry<S: PageSize> {
     writable: bool,        // or read-only
     user_accessible: bool, // or supervisor-only
     /// PWT: Goes to both the cache and directly to memory
@@ -177,8 +259,9 @@ impl From<PageEntry<Size4K>> for RawEntry {
             raw |= 1 << 8;
         }
         // bits 12 .. (MAXPHYADDR -1)
+        assert!(entry.physical_address.0 < (1 << MAXPHYADDR.load(Ordering::Relaxed)));
         raw |= entry.physical_address.0 as u64
-            & ((1 << memory::MAXPHYADDR) - 1)
+            & ((1 << MAXPHYADDR.load(Ordering::Relaxed)) - 1)
             & !((1 << Size4K::SHIFT) - 1);
         if entry.disabled_execute {
             raw |= 1 << 63;
@@ -202,7 +285,9 @@ impl From<RawEntry> for PageEntry<Size4K> {
             pat: raw.0 & (1 << 7) != 0,
             global: raw.0 & (1 << 8) != 0,
             physical_address: PhysicalAddress(
-                raw.0 as usize & ((1 << memory::MAXPHYADDR) - 1) & !((1 << Size4K::SHIFT) - 1),
+                raw.0 as usize
+                    & ((1 << MAXPHYADDR.load(Ordering::Relaxed)) - 1)
+                    & !((1 << Size4K::SHIFT) - 1),
             ),
             disabled_execute: raw.0 & (1 << 63) != 0,
             free_territory_baby: (((raw.0 >> 9) & 0x7) | (((raw.0 >> 52) & 0x7FF) << 3)) as u16,
@@ -244,8 +329,9 @@ impl<S: HugeSize> From<PageEntry<S>> for RawEntry {
             raw |= 1 << 12;
         }
         // bits S::SHIFT .. (MAXPHYADDR -1)
+        assert!(entry.physical_address.0 < (1 << MAXPHYADDR.load(Ordering::Relaxed)));
         raw |= entry.physical_address.0 as u64
-            & ((1 << memory::MAXPHYADDR) - 1)
+            & ((1 << MAXPHYADDR.load(Ordering::Relaxed)) - 1)
             & !((1 << S::SHIFT) - 1);
         if entry.disabled_execute {
             raw |= 1 << 63;
@@ -270,7 +356,9 @@ impl<S: HugeSize> From<RawEntry> for PageEntry<S> {
             pat: raw.0 & (1 << 12) != 0,
             global: raw.0 & (1 << 8) != 0,
             physical_address: PhysicalAddress(
-                raw.0 as usize & ((1 << memory::MAXPHYADDR) - 1) & !((1 << S::SHIFT) - 1),
+                raw.0 as usize
+                    & ((1 << MAXPHYADDR.load(Ordering::Relaxed)) - 1)
+                    & !((1 << S::SHIFT) - 1),
             ),
             disabled_execute: raw.0 & (1 << 63) != 0,
             free_territory_baby: (((raw.0 >> 9) & 0x7) | (((raw.0 >> 52) & 0x7FF) << 3)) as u16,
@@ -279,7 +367,7 @@ impl<S: HugeSize> From<RawEntry> for PageEntry<S> {
     }
 }
 
-enum EntryType<S: HugeSize> {
+pub enum EntryType<S: HugeSize> {
     Table(TableEntry),
     Page(PageEntry<S>),
 }
@@ -304,7 +392,7 @@ impl<S: HugeSize> From<RawEntry> for EntryType<S> {
     }
 }
 
-trait CanHaveNext {
+pub trait CanHaveNext {
     fn as_table_entry(&self) -> Option<&TableEntry>;
     fn pointing_to(table: PhysicalAddress) -> Self;
 }
@@ -330,9 +418,8 @@ impl<S: HugeSize> CanHaveNext for EntryType<S> {
     }
 }
 
-
 #[repr(C, align(4096))]
-struct PageTable<L: Level> {
+pub struct PageTable<L: Level> {
     entries: [RawEntry; 512],
     _level: PhantomData<L>,
 }
@@ -397,12 +484,12 @@ impl<L: HasNext> PageTable<L> {
 
 const _: () = assert!(size_of::<PageTable<L4>>() == 4096);
 
-struct L4;
-struct L3;
-struct L2;
-struct L1;
+pub struct L4;
+pub struct L3;
+pub struct L2;
+pub struct L1;
 
-trait Level {
+pub trait Level {
     const SHIFT: usize;
     const NUMBER: usize;
     type Entry: Into<RawEntry> + From<RawEntry>;
@@ -429,7 +516,7 @@ impl Level for L1 {
     type Entry = PageEntry<Size4K>;
 }
 
-trait HasNext: Level<Entry: CanHaveNext> {
+pub trait HasNext: Level<Entry: CanHaveNext> {
     type Next: Level;
 }
 
@@ -444,12 +531,12 @@ impl HasNext for L2 {
 }
 
 /// L1 Entry
-struct Size4K;
+pub struct Size4K;
 /// L2 Huge Entry
-struct Size2M;
+pub struct Size2M;
 /// L3 Huge Entry
-struct Size1G;
-trait PageSize {
+pub struct Size1G;
+pub trait PageSize {
     const SHIFT: usize;
 }
 impl PageSize for Size4K {
@@ -461,7 +548,7 @@ impl PageSize for Size2M {
 impl PageSize for Size1G {
     const SHIFT: usize = 30;
 }
-trait HugeSize: PageSize {}
+pub trait HugeSize: PageSize {}
 impl HugeSize for Size2M {}
 impl HugeSize for Size1G {}
 
@@ -501,6 +588,69 @@ unsafe fn map_huge_2m(
     Ok(())
 }
 
+pub unsafe fn map_range<S: PageSize>(
+    l4_table: &mut PageTable<L4>,
+    virt_start: VirtualAddress,
+    phys_start: PhysicalAddress,
+    len: usize,
+    writable: bool,
+    user_accessible: bool,
+    executable: bool,
+) -> Result<(), PagingError> {
+    assert_eq!(virt_start.0 % (1 << S::SHIFT), 0);
+    assert_eq!(phys_start.0 % (1 << S::SHIFT), 0);
+    assert_eq!(len % (1 << S::SHIFT), 0);
+
+    let num_pages = len / (1 << S::SHIFT);
+    for i in 0..num_pages {
+        let virt = VirtualAddress(virt_start.0 + i * (1 << S::SHIFT));
+        let phys = PhysicalAddress(phys_start.0 + i * (1 << S::SHIFT));
+        match S::SHIFT {
+            Size4K::SHIFT => {
+                unsafe { map(l4_table, virt, phys, writable, user_accessible, executable) }?;
+            }
+            Size2M::SHIFT => {
+                unsafe {
+                    map_huge_2m(l4_table, virt, phys, writable, user_accessible, executable)
+                }?;
+            }
+            _ => unimplemented!("Mapping for page size {} is not implemented", S::SHIFT),
+        }
+    }
+
+    Ok(())
+}
+
+/// To use only for MMIO mapping
+pub fn map_mmio(
+    l4_table: &mut PageTable<L4>,
+    phys_start: PhysicalAddress,
+    len: usize,
+    writable: bool,
+    user_accessible: bool,
+    executable: bool,
+) -> VirtualAddress {
+    assert_eq!(phys_start.0 % (1 << Size4K::SHIFT), 0);
+    assert_eq!(len % (1 << Size4K::SHIFT), 0);
+
+    let virt_start = VirtualAddress::new(phys_start.0 + memory::VIRTUAL_ADDRESS_OFFSET);
+    unsafe {
+        map_range::<Size4K>(
+            l4_table,
+            virt_start,
+            phys_start,
+            len,
+            writable,
+            user_accessible,
+            executable,
+        )
+        .unwrap();
+    }
+
+    virt_start
+}
+
+#[expect(dead_code)]
 fn vm_map(
     l4_table: &mut PageTable<L4>,
     virt: VirtualAddress,
@@ -525,7 +675,9 @@ fn vm_map(
     }
 }
 
-enum PagingError {
+#[expect(dead_code)]
+#[derive(Debug)]
+pub enum PagingError {
     NoMoreMemory,
     EntryAlreadyPresent { level: usize, index: usize },
     EntryNotPresent { level: usize, index: usize },

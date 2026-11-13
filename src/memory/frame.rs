@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicUsize, Ordering};
+
 use multiboot2::MemoryAreaType;
 use spin::Mutex;
 
@@ -9,6 +11,8 @@ use crate::{
 // TODO: find a way to do mutexes without_interrupt
 // Also check that this lock is taken as few times as possible, as high as possible (which is not the case right now)
 pub static FRAME_ALLOCATOR: Mutex<FrameAllocator> = Mutex::new(FrameAllocator::empty());
+/// The address of the first unexisting frame
+pub static END_ADDRESS: AtomicUsize = AtomicUsize::new(0);
 
 pub fn init() {
     FRAME_ALLOCATOR.lock().init();
@@ -17,11 +21,6 @@ pub fn init() {
 pub struct AllocatedFrame(PhysicalAddress);
 
 impl AllocatedFrame {
-    pub unsafe fn new(frame: PhysicalAddress) -> Self {
-        assert_eq!(frame.0 % FrameAllocator::FRAME_SIZE, 0);
-        Self(frame)
-    }
-
     pub const fn address(&self) -> PhysicalAddress {
         self.0
     }
@@ -36,7 +35,7 @@ impl AllocatedFrame {
 }
 
 #[repr(transparent)]
-struct Frame ([u8; FrameAllocator::FRAME_SIZE]);
+struct Frame([u8; FrameAllocator::FRAME_SIZE]);
 
 // Random number rn ngl
 const TOTAL_FRAMES: usize = 1024 * 1024; // 4 GiB of memory
@@ -79,6 +78,7 @@ impl FrameAllocator {
             align_up(boot_info_end, Self::FRAME_SIZE) / Self::FRAME_SIZE,
         );
         let aligned_kernel_end = align_up(kernel_end_addr().0, Self::FRAME_SIZE) / Self::FRAME_SIZE;
+        let mut highest_frame = aligned_kernel_end;
         for area in memory_map {
             if area.typ() == MemoryAreaType::Available {
                 let start_frame = align_up(area.start_address() as usize, Self::FRAME_SIZE * 8)
@@ -91,6 +91,9 @@ impl FrameAllocator {
                 self.bitmap[start_frame / 8..end_frame / 8]
                     .iter_mut()
                     .for_each(|b| *b = 0xFF);
+                if end_frame > highest_frame {
+                    highest_frame = end_frame;
+                }
             }
         }
         self.bitmap[mbi_addr_start / 8..=mbi_addr_end / 8]
@@ -99,8 +102,10 @@ impl FrameAllocator {
         self.bitmap[0..=aligned_kernel_end / 8]
             .iter_mut()
             .for_each(|b| *b = 0);
+        END_ADDRESS.store(highest_frame * Self::FRAME_SIZE, Ordering::Relaxed);
     }
 
+    #[expect(dead_code)]
     #[expect(clippy::needless_pass_by_value)]
     pub const fn free(&mut self, frame: AllocatedFrame) {
         let frame_index = frame.0.0 / Self::FRAME_SIZE;

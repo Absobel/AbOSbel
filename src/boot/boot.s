@@ -155,7 +155,7 @@ set_up_page_tables:
     or eax, 0b11 # present + writable
     mov [p4_table], eax
 
-    # map the 256th P4 entry to the P3 table so that the first 4GiB are mapped at 0xffff_8000_0000_0000 (128 TiB)
+    # map the 256th P4 entry to the P3 table so that the first 512GiB are mapped at 0xffff_8000_0000_0000 (128 TiB)
     # will be changed later by the kernel but that way before the new mapping, OFFSET = 128 TiB still works for virtual addresses
     lea eax, [p3_table]
     or eax, 0b11 # present + writable
