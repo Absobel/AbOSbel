@@ -1,7 +1,5 @@
 use core::{
-    arch::asm,
-    marker::PhantomData,
-    sync::atomic::{AtomicUsize, Ordering},
+    arch::asm, marker::PhantomData, sync::atomic::{AtomicUsize, Ordering},
 };
 
 use spin::{Mutex, Once};
@@ -14,6 +12,7 @@ use crate::{
     },
 };
 
+const MSR_PAT: MsrRegister = MsrRegister::new(0x277);
 const MSR_EFER: MsrRegister = MsrRegister::new(0xC000_0080);
 const MAX_ADDR_FEATURE: cpuid::Feature = cpuid::Feature::new(0x8000_0008, 0, 0, cpuid::Reg::Eax);
 
@@ -28,6 +27,12 @@ pub fn init() {
     // Set the MSR EFER.NXE bit for non executable pages
     let efer = unsafe { MSR_EFER.read_msr() };
     unsafe { MSR_EFER.write_msr(efer | (1 << 11)) };
+
+    // Change the MSR PAT stuff to be able to make the framebuffer write combining
+    cpuid::Feature::new(0x1, 0, 16, cpuid::Reg::Edx)
+        .cpu_has_feature()
+        .unwrap_or_else(|e| panic!("{e}"));
+    Pat::write_to_msr(MSR_PAT_ARRAY);
 
     let l4_frame = FRAME_ALLOCATOR
         .lock()
@@ -49,9 +54,12 @@ pub fn init() {
             VirtualAddress::identity_map(kernel_start),
             kernel_start,
             kernel_end.0 - kernel_start.0,
-            true,
-            false,
-            true,
+            PageEntryParameters {
+                writable: true,
+                user_accessible: false,
+                executable: true,
+                pat: Pat::WriteBack,
+            }
         )
         .unwrap();
     };
@@ -68,9 +76,12 @@ pub fn init() {
             VirtualAddress::phys_to_virt(phys_mem_start),
             phys_mem_start,
             phys_mem_end.0 - phys_mem_start.0,
-            true,
-            false,
-            false,
+            PageEntryParameters {
+                writable: true,
+                user_accessible: false,
+                executable: false,
+                pat: Pat::WriteBack,
+            }
         )
         .unwrap();
     };
@@ -86,6 +97,54 @@ pub fn init() {
     memory::END_OF_PAGING.store(phys_mem_end.0, Ordering::Relaxed);
 }
 
+// MSR PAT //
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pat {
+    /// All accesses are uncacheable. Write combining is not allowed. Speculative accesses are not allowed.
+    Uncacheable = 0b000,
+    /// All accesses are uncacheable. Write combining is allowed. Speculative reads are allowed.
+    WriteCombining = 0b001,
+    /// Reads allocate cache lines on a cache miss. Cache lines are not allocated on a write miss.
+    /// Write hits update the cache and main memory.
+    WriteThrough = 0b100,
+    /// Reads allocate cache lines on a cache miss. All writes update main memory.
+    /// Cache lines are not allocated on a write miss. Write hits invalidate the cache line and update main memory.
+    WriteProtected = 0b101,
+    /// Reads allocate cache lines on a cache miss, and can allocate to either the shared, exclusive, or modified state. Writes allocate to the modified state on a cache miss.
+    WriteBack = 0b110,
+    /// Same as uncacheable, except that this can be overriden by Write-Combining MTRRs.
+    Uncached = 0b111,
+}
+
+impl Pat {
+    fn write_to_msr(pat_arr: [Self; 8]) {
+        let mut msr_value = 0u64;
+        for (i, pat) in pat_arr.iter().enumerate() {
+            msr_value |= (*pat as u64) << (i * 8);
+        }
+        unsafe { MSR_PAT.write_msr(msr_value as usize) };
+    }
+
+    fn to_msr_arr_index(self, pat_arr: [Self; 8]) -> u64 {
+        let index = pat_arr.iter().position(|&p| p == self).expect("Invalid PAT value");
+        (index as u64) & 0b111
+    }
+}
+
+const MSR_PAT_ARRAY: [Pat; 8] = [
+    Pat::WriteBack,
+    Pat::WriteThrough,
+    Pat::Uncached,
+    Pat::Uncacheable,
+    Pat::WriteCombining,
+    Pat::WriteProtected,
+    Pat::Uncached,
+    Pat::Uncached,
+];
+
+// ENTRIES //
+
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct RawEntry(u64);
@@ -95,10 +154,6 @@ pub struct RawEntry(u64);
 pub struct TableEntry {
     writable: bool,        // or read-only
     user_accessible: bool, // or supervisor-only
-    /// Goes to both the cache and directly to memory
-    write_through: bool,
-    /// Disables the cache entirely
-    cache_disabled: bool,
     /// Written by the CPU to say this page has been accessed
     accessed: bool,
     physical_address: PhysicalAddress,
@@ -113,8 +168,6 @@ impl TableEntry {
         Self {
             writable: true,
             user_accessible: true,
-            write_through: false,
-            cache_disabled: false,
             accessed: false,
             physical_address: table,
             disabled_execute: false,
@@ -133,12 +186,6 @@ impl From<TableEntry> for RawEntry {
         }
         if entry.user_accessible {
             raw |= 1 << 2;
-        }
-        if entry.write_through {
-            raw |= 1 << 3;
-        }
-        if entry.cache_disabled {
-            raw |= 1 << 4;
         }
         if entry.accessed {
             raw |= 1 << 5;
@@ -164,8 +211,6 @@ impl From<RawEntry> for TableEntry {
         Self {
             writable: raw.0 & (1 << 1) != 0,
             user_accessible: raw.0 & (1 << 2) != 0,
-            write_through: raw.0 & (1 << 3) != 0,
-            cache_disabled: raw.0 & (1 << 4) != 0,
             accessed: raw.0 & (1 << 5) != 0,
             physical_address: PhysicalAddress(
                 raw.0 as usize & ((1 << MAXPHYADDR.load(Ordering::Relaxed)) - 1) & !0xFFF,
@@ -183,21 +228,16 @@ impl From<RawEntry> for TableEntry {
 pub struct PageEntry<S: PageSize> {
     writable: bool,        // or read-only
     user_accessible: bool, // or supervisor-only
-    /// PWT: Goes to both the cache and directly to memory
-    write_through: bool,
-    /// PCD: Disables the cache entirely
-    cache_disabled: bool,
     /// Written by the CPU to say this page has been accessed
     accessed: bool,
     /// Written by the CPU to say this page has been written to
     dirty: bool,
-    /// TODO: write comment and use it for WC in framebuffer
-    pat: bool,
     /// Tells the CPU to keep this page's TLB entry when CR3 is reloaded.
     /// CR4:0b7 (PGE) must be set for global pages to work
     global: bool,
     physical_address: PhysicalAddress,
     disabled_execute: bool,
+    pat: Pat,
     // TODO: Add warning when the top two bits are set when they're not used
     /// Available to me to use whatever i want :shrug:
     /// bits 9-11 && bits 52-62 (well there's Protection Key at 59-62 but unused for now)
@@ -208,21 +248,17 @@ pub struct PageEntry<S: PageSize> {
 impl<S: PageSize> PageEntry<S> {
     const fn pointing_to(
         frame: PhysicalAddress,
-        writable: bool,
-        user_accessible: bool,
-        executable: bool,
+        param: PageEntryParameters
     ) -> Self {
         Self {
-            writable,
-            user_accessible,
-            write_through: false,
-            cache_disabled: false,
+            writable: param.writable,
+            user_accessible: param.user_accessible,
             accessed: false,
             dirty: false,
-            pat: false,
+            pat: param.pat,
             global: false,
             physical_address: frame,
-            disabled_execute: !executable,
+            disabled_execute: !param.executable,
             free_territory_baby: 0,
             _size: PhantomData,
         }
@@ -232,6 +268,7 @@ impl<S: PageSize> PageEntry<S> {
 impl From<PageEntry<Size4K>> for RawEntry {
     fn from(entry: PageEntry<Size4K>) -> Self {
         let mut raw = 0u64;
+        let pat_bits = entry.pat.to_msr_arr_index(MSR_PAT_ARRAY);
         // present bit is always set for valid entries
         raw |= 1 << 0;
         if entry.writable {
@@ -240,21 +277,15 @@ impl From<PageEntry<Size4K>> for RawEntry {
         if entry.user_accessible {
             raw |= 1 << 2;
         }
-        if entry.write_through {
-            raw |= 1 << 3;
-        }
-        if entry.cache_disabled {
-            raw |= 1 << 4;
-        }
+        raw |= (pat_bits & 0x1) << 3;
+        raw |= ((pat_bits >> 1) & 0x1) << 4;
         if entry.accessed {
             raw |= 1 << 5;
         }
         if entry.dirty {
             raw |= 1 << 6;
         }
-        if entry.pat {
-            raw |= 1 << 7;
-        }
+        raw |= ((pat_bits >> 2) & 0x1) << 7;
         if entry.global {
             raw |= 1 << 8;
         }
@@ -275,14 +306,13 @@ impl From<PageEntry<Size4K>> for RawEntry {
 
 impl From<RawEntry> for PageEntry<Size4K> {
     fn from(raw: RawEntry) -> Self {
+        let pat_bits = ((raw.0 >> 3) & 0x1) | (((raw.0 >> 4) & 0x1) << 1) | (((raw.0 >> 7) & 0x1) << 2);
         Self {
             writable: raw.0 & (1 << 1) != 0,
             user_accessible: raw.0 & (1 << 2) != 0,
-            write_through: raw.0 & (1 << 3) != 0,
-            cache_disabled: raw.0 & (1 << 4) != 0,
             accessed: raw.0 & (1 << 5) != 0,
             dirty: raw.0 & (1 << 6) != 0,
-            pat: raw.0 & (1 << 7) != 0,
+            pat: MSR_PAT_ARRAY[pat_bits as usize],
             global: raw.0 & (1 << 8) != 0,
             physical_address: PhysicalAddress(
                 raw.0 as usize
@@ -300,6 +330,7 @@ impl<S: HugeSize> From<PageEntry<S>> for RawEntry {
     fn from(entry: PageEntry<S>) -> Self {
         assert_eq!(entry.physical_address.0 % (1 << S::SHIFT), 0);
         let mut raw = 0u64;
+        let pat_bits = entry.pat.to_msr_arr_index(MSR_PAT_ARRAY);
         // present bit is always set for valid entries
         raw |= 1 << 0;
         if entry.writable {
@@ -308,12 +339,8 @@ impl<S: HugeSize> From<PageEntry<S>> for RawEntry {
         if entry.user_accessible {
             raw |= 1 << 2;
         }
-        if entry.write_through {
-            raw |= 1 << 3;
-        }
-        if entry.cache_disabled {
-            raw |= 1 << 4;
-        }
+        raw |= (pat_bits & 0x1) << 3;
+        raw |= ((pat_bits >> 1) & 0x1) << 4;
         if entry.accessed {
             raw |= 1 << 5;
         }
@@ -325,9 +352,7 @@ impl<S: HugeSize> From<PageEntry<S>> for RawEntry {
         if entry.global {
             raw |= 1 << 8;
         }
-        if entry.pat {
-            raw |= 1 << 12;
-        }
+        raw |= ((pat_bits >> 2) & 0x1) << 12;
         // bits S::SHIFT .. (MAXPHYADDR -1)
         assert!(entry.physical_address.0 < (1 << MAXPHYADDR.load(Ordering::Relaxed)));
         raw |= entry.physical_address.0 as u64
@@ -346,14 +371,13 @@ impl<S: HugeSize> From<PageEntry<S>> for RawEntry {
 impl<S: HugeSize> From<RawEntry> for PageEntry<S> {
     fn from(raw: RawEntry) -> Self {
         assert!(raw.0 & (1 << 7) != 0);
+        let pat_bits = ((raw.0 >> 3) & 0x1) | (((raw.0 >> 4) & 0x1) << 1) | (((raw.0 >> 12) & 0x1) << 2);
         Self {
             writable: raw.0 & (1 << 1) != 0,
             user_accessible: raw.0 & (1 << 2) != 0,
-            write_through: raw.0 & (1 << 3) != 0,
-            cache_disabled: raw.0 & (1 << 4) != 0,
             accessed: raw.0 & (1 << 5) != 0,
             dirty: raw.0 & (1 << 6) != 0,
-            pat: raw.0 & (1 << 12) != 0,
+            pat: MSR_PAT_ARRAY[pat_bits as usize],
             global: raw.0 & (1 << 8) != 0,
             physical_address: PhysicalAddress(
                 raw.0 as usize
@@ -554,19 +578,25 @@ impl HugeSize for Size1G {}
 
 // TODO: sort that code
 
+#[derive(Debug, Clone, Copy)]
+pub struct PageEntryParameters {
+    pub writable: bool,
+    pub user_accessible: bool,
+    pub executable: bool,
+    pub pat: Pat,
+}
+
 unsafe fn map(
     l4_table: &mut PageTable<L4>,
     virt: VirtualAddress,
     phys: PhysicalAddress,
-    writable: bool,
-    user_accessible: bool,
-    executable: bool,
+    param: PageEntryParameters,
 ) -> Result<(), PagingError> {
     assert_eq!(virt.0 % (1 << Size4K::SHIFT), 0);
     let l3_table = l4_table.next_table_or_create((virt.0 >> L4::SHIFT) & 0x1FF)?;
     let l2_table = l3_table.next_table_or_create((virt.0 >> L3::SHIFT) & 0x1FF)?;
     let l1_table = l2_table.next_table_or_create((virt.0 >> L2::SHIFT) & 0x1FF)?;
-    let l1_entry = PageEntry::pointing_to(phys, writable, user_accessible, executable);
+    let l1_entry = PageEntry::pointing_to(phys, param);
     l1_table.add_entry((virt.0 >> L1::SHIFT) & 0x1FF, l1_entry)?;
 
     Ok(())
@@ -576,14 +606,12 @@ unsafe fn map_huge_2m(
     l4_table: &mut PageTable<L4>,
     virt: VirtualAddress,
     phys: PhysicalAddress,
-    writable: bool,
-    user_accessible: bool,
-    executable: bool,
+    param: PageEntryParameters,
 ) -> Result<(), PagingError> {
     assert_eq!(virt.0 % (1 << Size2M::SHIFT), 0);
     let l3_table = l4_table.next_table_or_create((virt.0 >> L4::SHIFT) & 0x1FF)?;
     let l2_table = l3_table.next_table_or_create((virt.0 >> L3::SHIFT) & 0x1FF)?;
-    let l2_entry = PageEntry::pointing_to(phys, writable, user_accessible, executable);
+    let l2_entry = PageEntry::pointing_to(phys, param);
     l2_table.add_entry((virt.0 >> L2::SHIFT) & 0x1FF, EntryType::Page(l2_entry))?;
     Ok(())
 }
@@ -593,9 +621,7 @@ pub unsafe fn map_range<S: PageSize>(
     virt_start: VirtualAddress,
     phys_start: PhysicalAddress,
     len: usize,
-    writable: bool,
-    user_accessible: bool,
-    executable: bool,
+    param: PageEntryParameters
 ) -> Result<(), PagingError> {
     assert_eq!(virt_start.0 % (1 << S::SHIFT), 0);
     assert_eq!(phys_start.0 % (1 << S::SHIFT), 0);
@@ -607,11 +633,11 @@ pub unsafe fn map_range<S: PageSize>(
         let phys = PhysicalAddress(phys_start.0 + i * (1 << S::SHIFT));
         match S::SHIFT {
             Size4K::SHIFT => {
-                unsafe { map(l4_table, virt, phys, writable, user_accessible, executable) }?;
+                unsafe { map(l4_table, virt, phys, param) }?;
             }
             Size2M::SHIFT => {
                 unsafe {
-                    map_huge_2m(l4_table, virt, phys, writable, user_accessible, executable)
+                    map_huge_2m(l4_table, virt, phys, param)
                 }?;
             }
             _ => unimplemented!("Mapping for page size {} is not implemented", S::SHIFT),
@@ -626,9 +652,7 @@ pub fn map_mmio(
     l4_table: &mut PageTable<L4>,
     phys_start: PhysicalAddress,
     len: usize,
-    writable: bool,
-    user_accessible: bool,
-    executable: bool,
+    param: PageEntryParameters
 ) -> VirtualAddress {
     assert_eq!(phys_start.0 % (1 << Size4K::SHIFT), 0);
     assert_eq!(len % (1 << Size4K::SHIFT), 0);
@@ -640,9 +664,7 @@ pub fn map_mmio(
             virt_start,
             phys_start,
             len,
-            writable,
-            user_accessible,
-            executable,
+            param,
         )
         .unwrap();
     }
@@ -654,9 +676,7 @@ pub fn map_mmio(
 fn vm_map(
     l4_table: &mut PageTable<L4>,
     virt: VirtualAddress,
-    writable: bool,
-    user_accessible: bool,
-    executable: bool,
+    param: PageEntryParameters,
 ) -> Result<(), PagingError> {
     let frame = FRAME_ALLOCATOR
         .lock()
@@ -668,12 +688,12 @@ fn vm_map(
             l4_table,
             virt,
             frame.address(),
-            writable,
-            user_accessible,
-            executable,
+            param,
         )
     }
 }
+
+// TODO: Unnap (TLB flush)
 
 #[expect(dead_code)]
 #[derive(Debug)]

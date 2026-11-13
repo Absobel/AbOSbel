@@ -2,15 +2,13 @@ use core::arch::asm;
 
 use crate::arch::cpuid;
 
-const MSR: cpuid::Feature = cpuid::Feature::new(0x1, 0, 5, cpuid::Reg::Edx);
-#[expect(dead_code)]
-const IA32_PAT_MSR: MsrRegister = MsrRegister::new(0x277);
 
 /// # Panics
 /// If the CPU doesn't support MSR
 pub fn init() {
-    // TODO: i guess support when there's no msr? but like?
-    MSR.cpu_has_feature().unwrap_or_else(|e| panic!("{e}"));
+    // Low key useless cause the bootstrap uses MSRs already
+    let msr_feature = cpuid::Feature::new(0x1, 0, 5, cpuid::Reg::Edx);
+    msr_feature.cpu_has_feature().unwrap_or_else(|e| panic!("{e}"));
 }
 
 pub struct MsrRegister {

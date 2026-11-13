@@ -4,11 +4,8 @@ pub mod text;
 use spin::{Mutex, Once};
 
 use crate::{
-    boot,
-    drivers::framebuffer::{screen::ScreenBuffer, text::Writer},
-    memory::{
-        self,
-        paging::{L4_TABLE, PageSize, Size4K},
+    boot, drivers::framebuffer::{screen::ScreenBuffer, text::Writer}, memory::{
+        self, paging::{self, L4_TABLE, PageSize, Size4K},
     },
 };
 
@@ -38,13 +35,14 @@ pub fn init(scale_factor: usize) {
         &mut L4_TABLE.get().unwrap().lock(),
         addr_start,
         addr_end.0 - addr_start.0,
-        true,
-        false,
-        false,
+        paging::PageEntryParameters {
+            writable: true,
+            user_accessible: false,
+            executable: false,
+            pat: paging::Pat::WriteCombining,
+        }
     );
-
-    // TODO: Write combining on this framebuffer, through PAT, maybe, i don't really care tbh but memorial for the MTRR that were never used. No wonder why the osdev wiki was wrong on this. It's legacy
-
+    
     BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag, framebuff_virt)));
     WRITER.call_once(|| Mutex::new(Writer::new(scale_factor)));
 }

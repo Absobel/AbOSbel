@@ -1,7 +1,6 @@
 ### What i'm working on currently
 
 * paging
-    * TLB flush for an eventual unmap function in paging
     * create a heap allocator
     * don't forget guard pages for stacks
 * Shadow buffer so that it runs at normal speed on real hardware
@@ -15,7 +14,7 @@
 ### The rest (in no particular order)
 
 * Support AZERTY
-* Support USB keyboard for modern hardware
+* Add key combo maybe (or maybe direct usb for moderner hardware)
 * Make it so that WRITER can't be unlocked while BUFFER is locked
 * Support BIOS for sure
 * After allocator, rewrite the graphical part and a lot of other things

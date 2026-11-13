@@ -130,6 +130,11 @@ impl KeyState {
             return Err(KeyEventError::WaitingForExtended(scancode));
         }
 
+        if scancode == 0xff {
+            WAITING_FOR_EXTENDED.store(false, Ordering::SeqCst);
+            return Err(KeyEventError::Skip(scancode));
+        }
+
         let key_code = scancode & !(1 << 7); // Clear the release bit
         let release_bit = (scancode & (1 << 7)) != 0;
         let is_extended = WAITING_FOR_EXTENDED.load(Ordering::SeqCst);
