@@ -1,6 +1,11 @@
 use core::marker::PhantomData;
 
-use crate::memory::{self, PhysicalAddress};
+use crate::memory::{self, PhysicalAddress, VirtualAddress, frame::FRAME_ALLOCATOR};
+
+pub fn init() {
+    // TODO: build L4 table with the kernel identity mapped (kernel start rounded down to kernel end rounded up)
+    // TODO: map the whole physical memory to +OFFSET
+}
 
 #[repr(transparent)]
 #[derive(Clone, Copy)]
@@ -9,7 +14,6 @@ struct RawEntry(u64);
 /// Level 2-4 page table entry
 #[expect(clippy::struct_excessive_bools)]
 struct TableEntry {
-    present: bool,
     writable: bool,        // or read-only
     user_accessible: bool, // or supervisor-only
     /// Goes to both the cache and directly to memory
@@ -25,12 +29,26 @@ struct TableEntry {
     free_territory_baby: u16,
 }
 
+impl TableEntry {
+    const fn pointing_to(table: PhysicalAddress) -> Self {
+        Self {
+            writable: true,
+            user_accessible: true,
+            write_through: false,
+            cache_disabled: false,
+            accessed: false,
+            physical_address: table,
+            disabled_execute: false,
+            free_territory_baby: 0,
+        }
+    }
+}
+
 impl From<TableEntry> for RawEntry {
     fn from(entry: TableEntry) -> Self {
         let mut raw = 0u64;
-        if entry.present {
-            raw |= 1 << 0;
-        }
+        // present bit is always set for valid entries
+        raw |= 1 << 0;
         if entry.writable {
             raw |= 1 << 1;
         }
@@ -62,7 +80,6 @@ impl From<TableEntry> for RawEntry {
 impl From<RawEntry> for TableEntry {
     fn from(raw: RawEntry) -> Self {
         Self {
-            present: raw.0 & (1 << 0) != 0,
             writable: raw.0 & (1 << 1) != 0,
             user_accessible: raw.0 & (1 << 2) != 0,
             write_through: raw.0 & (1 << 3) != 0,
@@ -79,10 +96,9 @@ impl From<RawEntry> for TableEntry {
     }
 }
 
-/// Level 1 page table entry
+/// Level 1 entries + Level 2 and 3 huge table entries
 #[expect(clippy::struct_excessive_bools)]
-struct PageEntry {
-    present: bool,
+struct PageEntry<S: PageSize> {
     writable: bool,        // or read-only
     user_accessible: bool, // or supervisor-only
     /// PWT: Goes to both the cache and directly to memory
@@ -104,14 +120,38 @@ struct PageEntry {
     /// Available to me to use whatever i want :shrug:
     /// bits 9-11 && bits 52-62 (well there's Protection Key at 59-62 but unused for now)
     free_territory_baby: u16,
+    _size: PhantomData<S>,
 }
 
-impl From<PageEntry> for RawEntry {
-    fn from(entry: PageEntry) -> Self {
-        let mut raw = 0u64;
-        if entry.present {
-            raw |= 1 << 0;
+impl<S: PageSize> PageEntry<S> {
+    const fn pointing_to(
+        frame: PhysicalAddress,
+        writable: bool,
+        user_accessible: bool,
+        executable: bool,
+    ) -> Self {
+        Self {
+            writable,
+            user_accessible,
+            write_through: false,
+            cache_disabled: false,
+            accessed: false,
+            dirty: false,
+            pat: false,
+            global: false,
+            physical_address: frame,
+            disabled_execute: !executable,
+            free_territory_baby: 0,
+            _size: PhantomData,
         }
+    }
+}
+
+impl From<PageEntry<Size4K>> for RawEntry {
+    fn from(entry: PageEntry<Size4K>) -> Self {
+        let mut raw = 0u64;
+        // present bit is always set for valid entries
+        raw |= 1 << 0;
         if entry.writable {
             raw |= 1 << 1;
         }
@@ -137,7 +177,9 @@ impl From<PageEntry> for RawEntry {
             raw |= 1 << 8;
         }
         // bits 12 .. (MAXPHYADDR -1)
-        raw |= entry.physical_address.0 as u64 & ((1 << memory::MAXPHYADDR) - 1) & !0xFFF;
+        raw |= entry.physical_address.0 as u64
+            & ((1 << memory::MAXPHYADDR) - 1)
+            & !((1 << Size4K::SHIFT) - 1);
         if entry.disabled_execute {
             raw |= 1 << 63;
         }
@@ -148,10 +190,9 @@ impl From<PageEntry> for RawEntry {
     }
 }
 
-impl From<RawEntry> for PageEntry {
+impl From<RawEntry> for PageEntry<Size4K> {
     fn from(raw: RawEntry) -> Self {
         Self {
-            present: raw.0 & (1 << 0) != 0,
             writable: raw.0 & (1 << 1) != 0,
             user_accessible: raw.0 & (1 << 2) != 0,
             write_through: raw.0 & (1 << 3) != 0,
@@ -161,13 +202,134 @@ impl From<RawEntry> for PageEntry {
             pat: raw.0 & (1 << 7) != 0,
             global: raw.0 & (1 << 8) != 0,
             physical_address: PhysicalAddress(
-                raw.0 as usize & ((1 << memory::MAXPHYADDR) - 1) & !0xFFF,
+                raw.0 as usize & ((1 << memory::MAXPHYADDR) - 1) & !((1 << Size4K::SHIFT) - 1),
             ),
             disabled_execute: raw.0 & (1 << 63) != 0,
             free_territory_baby: (((raw.0 >> 9) & 0x7) | (((raw.0 >> 52) & 0x7FF) << 3)) as u16,
+            _size: PhantomData,
         }
     }
 }
+
+impl<S: HugeSize> From<PageEntry<S>> for RawEntry {
+    fn from(entry: PageEntry<S>) -> Self {
+        assert_eq!(entry.physical_address.0 % (1 << S::SHIFT), 0);
+        let mut raw = 0u64;
+        // present bit is always set for valid entries
+        raw |= 1 << 0;
+        if entry.writable {
+            raw |= 1 << 1;
+        }
+        if entry.user_accessible {
+            raw |= 1 << 2;
+        }
+        if entry.write_through {
+            raw |= 1 << 3;
+        }
+        if entry.cache_disabled {
+            raw |= 1 << 4;
+        }
+        if entry.accessed {
+            raw |= 1 << 5;
+        }
+        if entry.dirty {
+            raw |= 1 << 6;
+        }
+        // Set the huge bit
+        raw |= 1 << 7;
+        if entry.global {
+            raw |= 1 << 8;
+        }
+        if entry.pat {
+            raw |= 1 << 12;
+        }
+        // bits S::SHIFT .. (MAXPHYADDR -1)
+        raw |= entry.physical_address.0 as u64
+            & ((1 << memory::MAXPHYADDR) - 1)
+            & !((1 << S::SHIFT) - 1);
+        if entry.disabled_execute {
+            raw |= 1 << 63;
+        }
+        let free = u64::from(entry.free_territory_baby);
+        raw |= (free & 0x7) << 9;
+        raw |= ((free >> 3) & 0x7FF) << 52;
+        Self(raw)
+    }
+}
+
+impl<S: HugeSize> From<RawEntry> for PageEntry<S> {
+    fn from(raw: RawEntry) -> Self {
+        assert!(raw.0 & (1 << 7) != 0);
+        Self {
+            writable: raw.0 & (1 << 1) != 0,
+            user_accessible: raw.0 & (1 << 2) != 0,
+            write_through: raw.0 & (1 << 3) != 0,
+            cache_disabled: raw.0 & (1 << 4) != 0,
+            accessed: raw.0 & (1 << 5) != 0,
+            dirty: raw.0 & (1 << 6) != 0,
+            pat: raw.0 & (1 << 12) != 0,
+            global: raw.0 & (1 << 8) != 0,
+            physical_address: PhysicalAddress(
+                raw.0 as usize & ((1 << memory::MAXPHYADDR) - 1) & !((1 << S::SHIFT) - 1),
+            ),
+            disabled_execute: raw.0 & (1 << 63) != 0,
+            free_territory_baby: (((raw.0 >> 9) & 0x7) | (((raw.0 >> 52) & 0x7FF) << 3)) as u16,
+            _size: PhantomData,
+        }
+    }
+}
+
+enum EntryType<S: HugeSize> {
+    Table(TableEntry),
+    Page(PageEntry<S>),
+}
+
+impl<S: HugeSize> From<EntryType<S>> for RawEntry {
+    fn from(entry: EntryType<S>) -> Self {
+        match entry {
+            EntryType::Table(table_entry) => table_entry.into(),
+            EntryType::Page(page_entry) => page_entry.into(),
+        }
+    }
+}
+
+impl<S: HugeSize> From<RawEntry> for EntryType<S> {
+    fn from(raw: RawEntry) -> Self {
+        // If bit 7 (the huge bit) is set, it's a page entry, otherwise it's a table entry
+        if raw.0 & (1 << 7) != 0 {
+            Self::Page(raw.into())
+        } else {
+            Self::Table(raw.into())
+        }
+    }
+}
+
+trait CanHaveNext {
+    fn as_table_entry(&self) -> Option<&TableEntry>;
+    fn pointing_to(table: PhysicalAddress) -> Self;
+}
+impl CanHaveNext for TableEntry {
+    fn as_table_entry(&self) -> Option<&TableEntry> {
+        Some(self)
+    }
+
+    fn pointing_to(table: PhysicalAddress) -> Self {
+        Self::pointing_to(table)
+    }
+}
+impl<S: HugeSize> CanHaveNext for EntryType<S> {
+    fn as_table_entry(&self) -> Option<&TableEntry> {
+        match self {
+            Self::Table(table_entry) => Some(table_entry),
+            Self::Page(_) => None,
+        }
+    }
+
+    fn pointing_to(table: PhysicalAddress) -> Self {
+        Self::Table(TableEntry::pointing_to(table))
+    }
+}
+
 
 #[repr(C, align(4096))]
 struct PageTable<L: Level> {
@@ -175,37 +337,100 @@ struct PageTable<L: Level> {
     _level: PhantomData<L>,
 }
 
+impl<L: Level> PageTable<L> {
+    fn add_entry(&mut self, index: usize, entry: L::Entry) -> Result<(), PagingError> {
+        assert!(index < 512);
+        let raw_entry = entry.into();
+        if self.get_entry(index).is_some() {
+            return Err(PagingError::EntryAlreadyPresent {
+                level: L::NUMBER,
+                index,
+            });
+        }
+        self.entries[index] = raw_entry;
+        Ok(())
+    }
+
+    fn get_entry(&self, index: usize) -> Option<L::Entry> {
+        assert!(index < 512);
+        let raw_entry = self.entries[index];
+        if raw_entry.0 & 1 == 0 {
+            return None;
+        }
+        Some(raw_entry.into())
+    }
+}
+
+impl<L: HasNext> PageTable<L> {
+    #[expect(clippy::needless_pass_by_ref_mut)]
+    fn next_table(&mut self, index: usize) -> Result<&mut PageTable<L::Next>, PagingError> {
+        assert!(index < 512);
+        let entry = self.get_entry(index).ok_or(PagingError::EntryNotPresent {
+            level: L::NUMBER,
+            index,
+        })?;
+        let table_entry = entry.as_table_entry().ok_or(PagingError::EntryNotTable {
+            level: L::NUMBER,
+            index,
+        })?;
+        let virt = VirtualAddress::phys_to_virt(table_entry.physical_address);
+        let next_table_ptr = virt.as_mut_ptr::<PageTable<L::Next>>();
+        unsafe { Ok(&mut *next_table_ptr) }
+    }
+
+    fn next_table_or_create(
+        &mut self,
+        index: usize,
+    ) -> Result<&mut PageTable<L::Next>, PagingError> {
+        assert!(index < 512);
+        if self.get_entry(index).is_none() {
+            let frame = FRAME_ALLOCATOR
+                .lock()
+                .alloc()
+                .ok_or(PagingError::NoMoreMemory)?;
+            frame.zero();
+            self.add_entry(index, L::Entry::pointing_to(frame.address()))?;
+        }
+        self.next_table(index)
+    }
+}
+
 const _: () = assert!(size_of::<PageTable<L4>>() == 4096);
-
-trait Level {
-    const SHIFT: usize;
-    type Entry: Into<RawEntry> + From<RawEntry>;
-}
-
-trait HasNext: Level {
-    type Next: Level;
-}
 
 struct L4;
 struct L3;
 struct L2;
 struct L1;
 
+trait Level {
+    const SHIFT: usize;
+    const NUMBER: usize;
+    type Entry: Into<RawEntry> + From<RawEntry>;
+}
+
 impl Level for L4 {
     const SHIFT: usize = 39;
+    const NUMBER: usize = 4;
     type Entry = TableEntry;
 }
 impl Level for L3 {
     const SHIFT: usize = 30;
-    type Entry = TableEntry;
+    const NUMBER: usize = 3;
+    type Entry = EntryType<Size1G>;
 }
 impl Level for L2 {
     const SHIFT: usize = 21;
-    type Entry = TableEntry;
+    const NUMBER: usize = 2;
+    type Entry = EntryType<Size2M>;
 }
 impl Level for L1 {
     const SHIFT: usize = 12;
-    type Entry = PageEntry;
+    const NUMBER: usize = 1;
+    type Entry = PageEntry<Size4K>;
+}
+
+trait HasNext: Level<Entry: CanHaveNext> {
+    type Next: Level;
 }
 
 impl HasNext for L4 {
@@ -216,4 +441,93 @@ impl HasNext for L3 {
 }
 impl HasNext for L2 {
     type Next = L1;
+}
+
+/// L1 Entry
+struct Size4K;
+/// L2 Huge Entry
+struct Size2M;
+/// L3 Huge Entry
+struct Size1G;
+trait PageSize {
+    const SHIFT: usize;
+}
+impl PageSize for Size4K {
+    const SHIFT: usize = 12;
+}
+impl PageSize for Size2M {
+    const SHIFT: usize = 21;
+}
+impl PageSize for Size1G {
+    const SHIFT: usize = 30;
+}
+trait HugeSize: PageSize {}
+impl HugeSize for Size2M {}
+impl HugeSize for Size1G {}
+
+// TODO: sort that code
+
+unsafe fn map(
+    l4_table: &mut PageTable<L4>,
+    virt: VirtualAddress,
+    phys: PhysicalAddress,
+    writable: bool,
+    user_accessible: bool,
+    executable: bool,
+) -> Result<(), PagingError> {
+    assert_eq!(virt.0 % (1 << Size4K::SHIFT), 0);
+    let l3_table = l4_table.next_table_or_create((virt.0 >> L4::SHIFT) & 0x1FF)?;
+    let l2_table = l3_table.next_table_or_create((virt.0 >> L3::SHIFT) & 0x1FF)?;
+    let l1_table = l2_table.next_table_or_create((virt.0 >> L2::SHIFT) & 0x1FF)?;
+    let l1_entry = PageEntry::pointing_to(phys, writable, user_accessible, executable);
+    l1_table.add_entry((virt.0 >> L1::SHIFT) & 0x1FF, l1_entry)?;
+
+    Ok(())
+}
+
+unsafe fn map_huge_2m(
+    l4_table: &mut PageTable<L4>,
+    virt: VirtualAddress,
+    phys: PhysicalAddress,
+    writable: bool,
+    user_accessible: bool,
+    executable: bool,
+) -> Result<(), PagingError> {
+    assert_eq!(virt.0 % (1 << Size2M::SHIFT), 0);
+    let l3_table = l4_table.next_table_or_create((virt.0 >> L4::SHIFT) & 0x1FF)?;
+    let l2_table = l3_table.next_table_or_create((virt.0 >> L3::SHIFT) & 0x1FF)?;
+    let l2_entry = PageEntry::pointing_to(phys, writable, user_accessible, executable);
+    l2_table.add_entry((virt.0 >> L2::SHIFT) & 0x1FF, EntryType::Page(l2_entry))?;
+    Ok(())
+}
+
+fn vm_map(
+    l4_table: &mut PageTable<L4>,
+    virt: VirtualAddress,
+    writable: bool,
+    user_accessible: bool,
+    executable: bool,
+) -> Result<(), PagingError> {
+    let frame = FRAME_ALLOCATOR
+        .lock()
+        .alloc()
+        .ok_or(PagingError::NoMoreMemory)?;
+    frame.zero();
+    unsafe {
+        map(
+            l4_table,
+            virt,
+            frame.address(),
+            writable,
+            user_accessible,
+            executable,
+        )
+    }
+}
+
+enum PagingError {
+    NoMoreMemory,
+    EntryAlreadyPresent { level: usize, index: usize },
+    EntryNotPresent { level: usize, index: usize },
+    EntryNotTable { level: usize, index: usize },
 }

@@ -7,6 +7,7 @@ use crate::{
 };
 
 // TODO: find a way to do mutexes without_interrupt
+// Also check that this lock is taken as few times as possible, as high as possible (which is not the case right now)
 pub static FRAME_ALLOCATOR: Mutex<FrameAllocator> = Mutex::new(FrameAllocator::empty());
 
 pub fn init() {
@@ -24,7 +25,18 @@ impl AllocatedFrame {
     pub const fn address(&self) -> PhysicalAddress {
         self.0
     }
+
+    pub fn zero(&self) {
+        let virt = VirtualAddress::phys_to_virt(self.0);
+        let ptr = virt.as_mut_ptr::<Frame>();
+        unsafe {
+            (*ptr).0.fill(0);
+        }
+    }
 }
+
+#[repr(transparent)]
+struct Frame ([u8; FrameAllocator::FRAME_SIZE]);
 
 // Random number rn ngl
 const TOTAL_FRAMES: usize = 1024 * 1024; // 4 GiB of memory

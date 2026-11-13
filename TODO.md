@@ -1,7 +1,9 @@
 ### What i'm working on currently
 
 * paging
+    * Set the MSR EFER.NXE (bit 11 of MSR 0xC0000080) on in arch/msr.rs for non executable pages
     * rebuild the page tables with the kernel identity mapped + a window for the entire physical memory to the higher half of the kernel (huge pages)
+    * TLB FLushes whatever somewhere?
     * create a heap allocator
     * don't forget guard pages for stacks
 * Shadow buffer so that it runs at normal speed on real hardware
@@ -12,9 +14,10 @@
 
 * Do the rest of the integration tests
 
-### The rest
+### The rest (in no particular order)
 
 * Support AZERTY
+* Support USB keyboard for modern hardware
 * Make it so that WRITER can't be unlocked while BUFFER is locked
 * Support BIOS for sure
 * After allocator, rewrite the graphical part and a lot of other things

@@ -2,6 +2,7 @@
 #![feature(abi_x86_interrupt)]
 #![feature(integer_atomics)]
 #![allow(clippy::missing_safety_doc)]
+// #![allow(dead_code)] // To check for other warnings when working on unplugged code
 
 // extern crate alloc;
 
@@ -43,6 +44,7 @@ pub mod init {
     pub use crate::drivers::pic::init as pic;
     pub use crate::drivers::serial::init as serial;
     pub use crate::memory::frame::init as allocator;
+    pub use crate::memory::paging::init as paging;
 }
 
 /// # Panics
@@ -62,6 +64,7 @@ pub fn initialization(multiboot_info_addr: usize) {
     unsafe { init::multiboot(multiboot_info_addr).expect("Couldn't load multiboot") };
     init::allocator(); // Initialize the physical memory allocator
     init::msr();
+    init::paging(); // After MSR cause of the EFER.NXE bit for non executable pages
     init::framebuffer(2);
 
     arch::enable_interrupts();
