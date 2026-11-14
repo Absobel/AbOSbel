@@ -5,6 +5,7 @@ use core::{
 };
 
 pub mod frame;
+pub mod heap;
 pub mod paging;
 
 /// At boot, the first 512 GiB of physical memory are mapped to the higher half of the virtual space
@@ -70,6 +71,14 @@ impl VirtualAddress {
     }
 }
 
+impl Add<usize> for VirtualAddress {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
 unsafe extern "C" {
     static kernel_start: u8;
 }
@@ -99,24 +108,3 @@ pub const fn align_down_pow2(addr: usize, align: usize) -> usize {
     debug_assert!(align.is_power_of_two());
     addr & !(align - 1)
 }
-
-// TODO: heap allocator, for later
-
-// use core::ptr::null_mut;
-
-// use alloc::alloc::{GlobalAlloc, Layout};
-
-// pub struct Dummy;
-
-// unsafe impl GlobalAlloc for Dummy {
-//     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-//         null_mut()
-//     }
-
-//     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-//         panic!("dealloc should be never called")
-//     }
-// }
-
-// #[global_allocator]
-// static ALLOCATOR: Dummy = Dummy;

@@ -1,5 +1,7 @@
 use core::{
-    arch::asm, marker::PhantomData, sync::atomic::{AtomicUsize, Ordering},
+    arch::asm,
+    marker::PhantomData,
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 use spin::{Mutex, Once};
@@ -59,7 +61,7 @@ pub fn init() {
                 user_accessible: false,
                 executable: true,
                 pat: Pat::WriteBack,
-            }
+            },
         )
         .unwrap();
     };
@@ -81,7 +83,7 @@ pub fn init() {
                 user_accessible: false,
                 executable: false,
                 pat: Pat::WriteBack,
-            }
+            },
         )
         .unwrap();
     };
@@ -127,7 +129,10 @@ impl Pat {
     }
 
     fn to_msr_arr_index(self, pat_arr: [Self; 8]) -> u64 {
-        let index = pat_arr.iter().position(|&p| p == self).expect("Invalid PAT value");
+        let index = pat_arr
+            .iter()
+            .position(|&p| p == self)
+            .expect("Invalid PAT value");
         (index as u64) & 0b111
     }
 }
@@ -246,10 +251,7 @@ pub struct PageEntry<S: PageSize> {
 }
 
 impl<S: PageSize> PageEntry<S> {
-    const fn pointing_to(
-        frame: PhysicalAddress,
-        param: PageEntryParameters
-    ) -> Self {
+    const fn pointing_to(frame: PhysicalAddress, param: PageEntryParameters) -> Self {
         Self {
             writable: param.writable,
             user_accessible: param.user_accessible,
@@ -306,7 +308,8 @@ impl From<PageEntry<Size4K>> for RawEntry {
 
 impl From<RawEntry> for PageEntry<Size4K> {
     fn from(raw: RawEntry) -> Self {
-        let pat_bits = ((raw.0 >> 3) & 0x1) | (((raw.0 >> 4) & 0x1) << 1) | (((raw.0 >> 7) & 0x1) << 2);
+        let pat_bits =
+            ((raw.0 >> 3) & 0x1) | (((raw.0 >> 4) & 0x1) << 1) | (((raw.0 >> 7) & 0x1) << 2);
         Self {
             writable: raw.0 & (1 << 1) != 0,
             user_accessible: raw.0 & (1 << 2) != 0,
@@ -371,7 +374,8 @@ impl<S: HugeSize> From<PageEntry<S>> for RawEntry {
 impl<S: HugeSize> From<RawEntry> for PageEntry<S> {
     fn from(raw: RawEntry) -> Self {
         assert!(raw.0 & (1 << 7) != 0);
-        let pat_bits = ((raw.0 >> 3) & 0x1) | (((raw.0 >> 4) & 0x1) << 1) | (((raw.0 >> 12) & 0x1) << 2);
+        let pat_bits =
+            ((raw.0 >> 3) & 0x1) | (((raw.0 >> 4) & 0x1) << 1) | (((raw.0 >> 12) & 0x1) << 2);
         Self {
             writable: raw.0 & (1 << 1) != 0,
             user_accessible: raw.0 & (1 << 2) != 0,
@@ -621,7 +625,7 @@ pub unsafe fn map_range<S: PageSize>(
     virt_start: VirtualAddress,
     phys_start: PhysicalAddress,
     len: usize,
-    param: PageEntryParameters
+    param: PageEntryParameters,
 ) -> Result<(), PagingError> {
     assert_eq!(virt_start.0 % (1 << S::SHIFT), 0);
     assert_eq!(phys_start.0 % (1 << S::SHIFT), 0);
@@ -636,9 +640,7 @@ pub unsafe fn map_range<S: PageSize>(
                 unsafe { map(l4_table, virt, phys, param) }?;
             }
             Size2M::SHIFT => {
-                unsafe {
-                    map_huge_2m(l4_table, virt, phys, param)
-                }?;
+                unsafe { map_huge_2m(l4_table, virt, phys, param) }?;
             }
             _ => unimplemented!("Mapping for page size {} is not implemented", S::SHIFT),
         }
@@ -652,28 +654,20 @@ pub fn map_mmio(
     l4_table: &mut PageTable<L4>,
     phys_start: PhysicalAddress,
     len: usize,
-    param: PageEntryParameters
+    param: PageEntryParameters,
 ) -> VirtualAddress {
     assert_eq!(phys_start.0 % (1 << Size4K::SHIFT), 0);
     assert_eq!(len % (1 << Size4K::SHIFT), 0);
 
     let virt_start = VirtualAddress::new(phys_start.0 + memory::VIRTUAL_ADDRESS_OFFSET);
     unsafe {
-        map_range::<Size4K>(
-            l4_table,
-            virt_start,
-            phys_start,
-            len,
-            param,
-        )
-        .unwrap();
+        map_range::<Size4K>(l4_table, virt_start, phys_start, len, param).unwrap();
     }
 
     virt_start
 }
 
-#[expect(dead_code)]
-fn vm_map(
+pub fn vm_map(
     l4_table: &mut PageTable<L4>,
     virt: VirtualAddress,
     param: PageEntryParameters,
@@ -683,14 +677,25 @@ fn vm_map(
         .alloc()
         .ok_or(PagingError::NoMoreMemory)?;
     frame.zero();
-    unsafe {
-        map(
-            l4_table,
-            virt,
-            frame.address(),
-            param,
-        )
+    unsafe { map(l4_table, virt, frame.address(), param) }
+}
+
+pub fn vm_map_range(
+    l4_table: &mut PageTable<L4>,
+    virt_start: VirtualAddress,
+    len: usize,
+    param: PageEntryParameters,
+) -> Result<(), PagingError> {
+    assert_eq!(virt_start.0 % (1 << Size4K::SHIFT), 0);
+    assert_eq!(len % (1 << Size4K::SHIFT), 0);
+
+    let num_pages = len / (1 << Size4K::SHIFT);
+    for i in 0..num_pages {
+        let virt = virt_start + i * (1 << Size4K::SHIFT);
+        vm_map(l4_table, virt, param)?;
     }
+
+    Ok(())
 }
 
 // TODO: Unnap (TLB flush)

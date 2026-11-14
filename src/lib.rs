@@ -4,7 +4,7 @@
 #![allow(clippy::missing_safety_doc)]
 // #![allow(dead_code)] // To check for other warnings when working on unplugged code
 
-// extern crate alloc;
+extern crate alloc;
 
 mod arch;
 mod boot;
@@ -44,6 +44,7 @@ pub mod init {
     pub use crate::drivers::pic::init as pic;
     pub use crate::drivers::serial::init as serial;
     pub use crate::memory::frame::init as allocator;
+    pub use crate::memory::heap::init as heap;
     pub use crate::memory::paging::init as paging;
 }
 
@@ -65,6 +66,7 @@ pub fn initialization(multiboot_info_addr: usize) {
     init::allocator(); // Initialize the physical memory allocator
     init::msr();
     init::paging(); // After MSR cause of the EFER.NXE bit for non executable pages
+    init::heap();
     init::framebuffer(2);
 
     arch::enable_interrupts();

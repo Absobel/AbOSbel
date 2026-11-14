@@ -4,8 +4,11 @@ pub mod text;
 use spin::{Mutex, Once};
 
 use crate::{
-    boot, drivers::framebuffer::{screen::ScreenBuffer, text::Writer}, memory::{
-        self, paging::{self, L4_TABLE, PageSize, Size4K},
+    boot,
+    drivers::framebuffer::{screen::ScreenBuffer, text::Writer},
+    memory::{
+        self,
+        paging::{self, L4_TABLE, PageSize, Size4K},
     },
 };
 
@@ -40,9 +43,9 @@ pub fn init(scale_factor: usize) {
             user_accessible: false,
             executable: false,
             pat: paging::Pat::WriteCombining,
-        }
+        },
     );
-    
+
     BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag, framebuff_virt)));
     WRITER.call_once(|| Mutex::new(Writer::new(scale_factor)));
 }

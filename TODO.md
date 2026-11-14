@@ -1,7 +1,6 @@
 ### What i'm working on currently
 
 * paging
-    * create a heap allocator
     * don't forget guard pages for stacks
 * Shadow buffer so that it runs at normal speed on real hardware
     * Just make the reads read from the backbuffer and the writes write to both
@@ -13,6 +12,8 @@
 
 ### The rest (in no particular order)
 
+* Make a better allocator (for now it's a bump one which is mid)
+* Refactor the paging with a Mapper trait and Page struct that would align the addresses
 * Support AZERTY
 * Add key combo maybe (or maybe direct usb for moderner hardware)
 * Make it so that WRITER can't be unlocked while BUFFER is locked

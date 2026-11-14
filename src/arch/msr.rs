@@ -2,13 +2,14 @@ use core::arch::asm;
 
 use crate::arch::cpuid;
 
-
 /// # Panics
 /// If the CPU doesn't support MSR
 pub fn init() {
     // Low key useless cause the bootstrap uses MSRs already
     let msr_feature = cpuid::Feature::new(0x1, 0, 5, cpuid::Reg::Edx);
-    msr_feature.cpu_has_feature().unwrap_or_else(|e| panic!("{e}"));
+    msr_feature
+        .cpu_has_feature()
+        .unwrap_or_else(|e| panic!("{e}"));
 }
 
 pub struct MsrRegister {

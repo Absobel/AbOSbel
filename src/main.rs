@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 
-// extern crate alloc;
-
 use core::panic::PanicInfo;
 
 use ab_os_bel::{event_loop, hlt_loop, initialization, panic_report, real_main};

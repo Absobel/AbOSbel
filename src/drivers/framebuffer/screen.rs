@@ -1,9 +1,6 @@
 use multiboot2::FramebufferTag;
 
-use crate::{
-    drivers::framebuffer::OutOfBoundsError,
-    memory::VirtualAddress,
-};
+use crate::{drivers::framebuffer::OutOfBoundsError, memory::VirtualAddress};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]

@@ -7,6 +7,8 @@
 
 use core::arch::asm;
 
+use alloc::{boxed::Box, vec};
+
 use crate::{
     drivers::framebuffer::{BUFFER, screen::Color, text::CP437},
     memory::frame::{FRAME_ALLOCATOR, FrameAllocator},
