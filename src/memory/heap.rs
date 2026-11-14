@@ -10,7 +10,7 @@ const HEAP_START: VirtualAddress = VirtualAddress(0xffff_c000_0000_0000); // ind
 const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
 
 #[global_allocator]
-static ALLOCATOR: BumpAllocator = BumpAllocator::new();
+pub static ALLOCATOR: BumpAllocator = BumpAllocator::new();
 
 /// # Panics
 /// No idea ngl, i'll wait till it bites me in the ass idc
@@ -62,6 +62,15 @@ impl BumpAllocator {
         param.heap_start = heap_start;
         param.heap_end = heap_start + heap_size;
         param.next = heap_start;
+    }
+
+    /// Returns (used, total) memory in bytes
+    #[expect(dead_code)]
+    pub fn usage(&self) -> (usize, usize) {
+        let param = &*self.param.lock();
+        let used = param.next.0 - param.heap_start.0;
+        let total = param.heap_end.0 - param.heap_start.0;
+        (used, total)
     }
 }
 

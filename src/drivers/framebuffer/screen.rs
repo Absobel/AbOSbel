@@ -61,6 +61,23 @@ impl ScreenBuffer {
         Ok(())
     }
 
+    #[expect(dead_code)]
+    pub fn fill_rect(
+        &mut self,
+        x: usize,
+        y: usize,
+        dx: usize,
+        dy: usize,
+        color: Color,
+    ) -> Result<(), OutOfBoundsError> {
+        for y in y..y + dy {
+            for x in x..x + dx {
+                self.write(x, y, color)?;
+            }
+        }
+        Ok(())
+    }
+
     /// # Errors
     /// This function will return an error if the point is out of bounds of the buffer.
     #[expect(dead_code)]

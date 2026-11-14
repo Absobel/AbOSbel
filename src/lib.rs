@@ -23,7 +23,11 @@ use core::{
 pub use arch::hlt_loop;
 
 use crate::{
-    drivers::{framebuffer::WRITER, keyboard::flush_key_events, serial::EmergencySerialWriter},
+    drivers::{
+        framebuffer::WRITER,
+        keyboard::flush_key_events,
+        serial::EmergencySerialWriter,
+    },
     memory::{PhysicalAddress, VirtualAddress},
 };
 

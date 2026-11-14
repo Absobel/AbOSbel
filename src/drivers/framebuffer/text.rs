@@ -284,7 +284,6 @@ fn nth_char(n: usize) -> &'static [u8] {
     &VGA_FONT[n * 16..(n + 1) * 16]
 }
 
-// TODO : transform this to a BTreeMap once there is a memory allocator
 fn char_to_font_idx(c: char) -> usize {
     match c {
         ' '..='~' => c as usize,

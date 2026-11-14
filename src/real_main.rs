@@ -10,8 +10,11 @@ use core::arch::asm;
 use alloc::{boxed::Box, vec};
 
 use crate::{
-    drivers::framebuffer::{BUFFER, screen::Color, text::CP437},
-    memory::frame::{FRAME_ALLOCATOR, FrameAllocator},
+    drivers::framebuffer::{self, BUFFER, screen::Color, text::CP437},
+    memory::{
+        frame::{FRAME_ALLOCATOR, FrameAllocator},
+        heap::ALLOCATOR,
+    },
     print, println,
 };
 
@@ -39,18 +42,6 @@ pub fn main() {
     println!();
 
     // whatever you want
-
+    
     println!("\nEnd of program.\n");
-}
-
-fn division_by_zero() {
-    unsafe {
-        asm!(
-            "xor edx, edx",
-            "xor ecx, ecx",
-            "div ecx",
-            out("eax") _, out("edx") _, out("ecx") _,
-            options(nomem, nostack),
-        );
-    }
 }
