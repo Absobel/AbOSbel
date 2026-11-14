@@ -21,6 +21,10 @@ const MAX_ADDR_FEATURE: cpuid::Feature = cpuid::Feature::new(0x8000_0008, 0, 0, 
 pub static L4_TABLE: Once<Mutex<&'static mut PageTable<L4>>> = Once::new();
 pub static MAXPHYADDR: AtomicUsize = AtomicUsize::new(0);
 
+unsafe extern "C" {
+    static stack_guard_page: u8;
+}
+
 /// # Panics
 /// Panics if there's no more memory. I don't think it can panic from other things since it's a new page table
 pub fn init() {
@@ -65,6 +69,10 @@ pub fn init() {
         )
         .unwrap();
     };
+
+    // Guard page to catch stack overflows
+    let guard_page_virt = VirtualAddress::new(&raw const stack_guard_page as usize);
+    unmap_4k(&mut l4_table, guard_page_virt).unwrap();
 
     // Map the whole physical memory to +OFFSET
     let phys_mem_start = PhysicalAddress(0);
@@ -474,6 +482,18 @@ impl<L: Level> PageTable<L> {
         }
         Some(raw_entry.into())
     }
+
+    fn remove_entry(&mut self, index: usize) -> Result<(), PagingError> {
+        assert!(index < 512);
+        if self.get_entry(index).is_none() {
+            return Err(PagingError::EntryNotPresent {
+                level: L::NUMBER,
+                index,
+            });
+        }
+        self.entries[index] = RawEntry(0);
+        Ok(())
+    }
 }
 
 impl<L: HasNext> PageTable<L> {
@@ -698,7 +718,18 @@ pub fn vm_map_range(
     Ok(())
 }
 
-// TODO: Unnap (TLB flush)
+fn unmap_4k(l4_table: &mut PageTable<L4>, virt: VirtualAddress) -> Result<(), PagingError> {
+    assert_eq!(virt.0 % (1 << Size4K::SHIFT), 0);
+    let l3_table = l4_table.next_table((virt.0 >> L4::SHIFT) & 0x1FF)?;
+    let l2_table = l3_table.next_table((virt.0 >> L3::SHIFT) & 0x1FF)?;
+    let l1_table = l2_table.next_table((virt.0 >> L2::SHIFT) & 0x1FF)?;
+    l1_table.remove_entry((virt.0 >> L1::SHIFT) & 0x1FF)?;
+
+    unsafe {
+        asm!("invlpg [{}]", in(reg) virt.0, options(nostack, preserves_flags));
+    }
+    Ok(())
+}
 
 #[expect(dead_code)]
 #[derive(Debug)]

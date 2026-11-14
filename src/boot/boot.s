@@ -257,6 +257,11 @@ p4_table:
 p3_table:
     .space P3_TABLE_SIZE
 
+/* Guard page to catch stack overflows */
+.global stack_guard_page
+stack_guard_page:
+    .space 0x1000
+
 /* allocate stack */
 stack_bottom:
     .space STACK_SIZE

@@ -1,7 +1,5 @@
 ### What i'm working on currently
 
-* paging
-    * don't forget guard pages for stacks
 * Shadow buffer so that it runs at normal speed on real hardware
     * Just make the reads read from the backbuffer and the writes write to both
 * rewrite whatever is after the new allocator with the heap
