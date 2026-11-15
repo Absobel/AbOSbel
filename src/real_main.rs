@@ -10,7 +10,11 @@ use core::arch::asm;
 use alloc::{boxed::Box, vec};
 
 use crate::{
-    drivers::framebuffer::{self, BUFFER, screen::Color, text::CP437},
+    drivers::framebuffer::{
+        self, BUFFER,
+        screen::{Color, ScreenBuffer},
+        text::CP437,
+    },
     memory::{
         frame::{FRAME_ALLOCATOR, FrameAllocator},
         heap::ALLOCATOR,
@@ -22,8 +26,7 @@ pub fn main() {
     // let red = framebuffer::Color::new(255, 0, 0, 255);
     let lavender = Color::new(191, 148, 228, 255);
 
-    let buffer = BUFFER.get().expect("Buffer required");
-    buffer.lock().clear(lavender);
+    ScreenBuffer::canvas().clear(lavender);
     // let writer = WRITER.get().expect("Writer required");
     // writer.lock().change_background_color(red);
     // writer.lock().change_foreground_color(framebuffer::Color::new(255, 0, 0, 255));
@@ -42,6 +45,6 @@ pub fn main() {
     println!();
 
     // whatever you want
-    
+
     println!("\nEnd of program.\n");
 }

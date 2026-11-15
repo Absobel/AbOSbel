@@ -1,7 +1,6 @@
 ### What i'm working on currently
 
-* Shadow buffer so that it runs at normal speed on real hardware
-    * Just make the reads read from the backbuffer and the writes write to both
+* Cursor timer
 * rewrite whatever is after the new allocator with the heap
 
 ### Testing

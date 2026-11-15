@@ -1,10 +1,8 @@
 use core::fmt;
 
-use spin::MutexGuard;
-
 use crate::drivers::framebuffer::{
-    BUFFER, OutOfBoundsError,
-    screen::{Color, ScreenBuffer},
+    OutOfBoundsError,
+    screen::{Canvas, Color, ScreenBuffer},
 };
 
 #[allow(dead_code)]
@@ -18,12 +16,11 @@ pub struct TextBuffer {
 }
 
 impl TextBuffer {
-    pub fn new(scale_factor: usize) -> Self {
-        let buffer = BUFFER.get().expect("Buffer required").lock();
-        let max_char_x = buffer.max_x() / (VGA_CHAR_SIZE.0 * scale_factor);
-        let padding_char_x = (buffer.max_x() % (VGA_CHAR_SIZE.0 * scale_factor)) * VGA_CHAR_SIZE.1;
-        let max_char_y = buffer.max_y() / (VGA_CHAR_SIZE.1 * scale_factor);
-        let padding_char_y = (buffer.max_y() % (VGA_CHAR_SIZE.1 * scale_factor)) * VGA_CHAR_SIZE.0;
+    pub fn new(canvas: &Canvas<'static>, scale_factor: usize) -> Self {
+        let max_char_x = canvas.max_x() / (VGA_CHAR_SIZE.0 * scale_factor);
+        let padding_char_x = (canvas.max_x() % (VGA_CHAR_SIZE.0 * scale_factor)) * VGA_CHAR_SIZE.1;
+        let max_char_y = canvas.max_y() / (VGA_CHAR_SIZE.1 * scale_factor);
+        let padding_char_y = (canvas.max_y() % (VGA_CHAR_SIZE.1 * scale_factor)) * VGA_CHAR_SIZE.0;
         Self {
             max_char_x,
             max_char_y,
@@ -31,10 +28,6 @@ impl TextBuffer {
             padding_char_x,
             padding_char_y,
         }
-    }
-
-    fn get_buffer() -> MutexGuard<'static, ScreenBuffer> {
-        BUFFER.get().expect("Buffer required").lock()
     }
 
     const fn char_size_px(&self) -> (usize, usize) {
@@ -59,6 +52,7 @@ impl TextBuffer {
     // Assumes the slice is of length 16 (16 bytes = 8*16 pixels = char)
     fn draw_char_rect(
         &self,
+        canvas: &mut Canvas<'static>,
         rect: &[u8],
         char_x: usize,
         char_y: usize,
@@ -73,7 +67,6 @@ impl TextBuffer {
                 self.max_char_y,
             ));
         }
-        let mut buffer = Self::get_buffer();
         for char_pxl_x in 0..VGA_CHAR_SIZE.0 {
             for (char_pxl_y, pxl_y) in rect.iter().enumerate().take(VGA_CHAR_SIZE.1) {
                 let char_pxl = (pxl_y >> (VGA_CHAR_SIZE.0 - 1 - char_pxl_x)) & 1;
@@ -85,7 +78,7 @@ impl TextBuffer {
                 let (buffer_x, buffer_y) = self.char_coord_to_buffer_coord(char_x, char_y);
                 for i in 0..self.scale_factor {
                     for j in 0..self.scale_factor {
-                        buffer.write(
+                        canvas.write(
                             buffer_x + char_pxl_x * self.scale_factor + i,
                             buffer_y + char_pxl_y * self.scale_factor + j,
                             color,
@@ -99,6 +92,7 @@ impl TextBuffer {
 
     fn write_char(
         &self,
+        canvas: &mut Canvas<'static>,
         r#char: char,
         char_x: usize,
         char_y: usize,
@@ -107,6 +101,7 @@ impl TextBuffer {
     ) -> Result<(), OutOfBoundsError> {
         let char_rect = nth_char(char_to_font_idx(r#char));
         self.draw_char_rect(
+            canvas,
             char_rect,
             char_x,
             char_y,
@@ -120,6 +115,7 @@ impl TextBuffer {
     #[expect(clippy::similar_names)]
     pub fn move_slice_text(
         &self,
+        canvas: &mut Canvas<'static>,
         char_x: usize,
         char_y: usize,
         text_len: usize,
@@ -132,13 +128,17 @@ impl TextBuffer {
         let len =
             text_len * VGA_CHAR_SIZE.0 * VGA_CHAR_SIZE.1 * self.scale_factor * self.scale_factor
                 + padding;
-        let mut buffer = Self::get_buffer();
-        buffer.move_slice(x, y, len, dx, dy)
+        canvas.move_slice(x, y, len, dx, dy)
     }
 
-    fn clear_line(&self, y: usize, background_color: Color) -> Result<(), OutOfBoundsError> {
+    fn clear_line(
+        &self,
+        canvas: &mut Canvas<'static>,
+        y: usize,
+        background_color: Color,
+    ) -> Result<(), OutOfBoundsError> {
         for x in 0..self.max_char_x {
-            self.write_char(' ', x, y, background_color, background_color)?;
+            self.write_char(canvas, ' ', x, y, background_color, background_color)?;
         }
         Ok(())
     }
@@ -153,12 +153,12 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn new(scale_factor: usize) -> Self {
+    pub fn new(canvas: &Canvas<'static>, scale_factor: usize) -> Self {
         Self {
             column_position: 0,
             background_code: Color::new(0, 0, 0, 255),
             foreground_code: Color::new(255, 255, 255, 255),
-            text_buffer: TextBuffer::new(scale_factor),
+            text_buffer: TextBuffer::new(canvas, scale_factor),
         }
     }
 
@@ -174,25 +174,30 @@ impl Writer {
 
     /// # Errors
     /// This function will return an error if the text is out of bounds of the buffer.
-    pub fn write_str(&mut self, string: &str) -> Result<(), OutOfBoundsError> {
-        self.cursor(false)?;
+    pub fn write_str(
+        &mut self,
+        canvas: &mut Canvas<'static>,
+        string: &str,
+    ) -> Result<(), OutOfBoundsError> {
+        self.cursor(canvas, false)?;
         for char in string.chars() {
             match char {
-                '\n' => self.new_line(),
+                '\n' => self.new_line(canvas),
                 '\x08' => {
                     if self.column_position > 0 {
                         self.column_position -= 1;
                     } else {
                         self.column_position = self.text_buffer.max_char_x - 1;
-                        self.anti_new_line();
+                        self.anti_new_line(canvas);
                     }
                 }
                 char => {
                     if self.column_position >= self.text_buffer.max_char_x {
-                        self.new_line();
+                        self.new_line(canvas);
                     }
                     let max_char_y = self.text_buffer.max_char_y;
                     self.text_buffer.write_char(
+                        canvas,
                         char,
                         self.column_position,
                         max_char_y - 1,
@@ -203,42 +208,43 @@ impl Writer {
                 }
             }
         }
-        self.cursor(true)
+        self.cursor(canvas, true)
     }
 
-    fn clear_line(&mut self) {
+    fn clear_line(&mut self, canvas: &mut Canvas<'static>) {
         let max_char_y = self.text_buffer.max_char_y;
         self.text_buffer
-            .clear_line(max_char_y - 1, self.background_code)
+            .clear_line(canvas, max_char_y - 1, self.background_code)
             .unwrap();
         self.column_position = 0;
     }
 
-    fn new_line(&mut self) {
+    fn new_line(&mut self, canvas: &mut Canvas<'static>) {
         let text_len = self.text_buffer.max_char_x * (self.text_buffer.max_char_y - 1);
         self.text_buffer
-            .move_slice_text(0, 1, text_len, 0, -1)
+            .move_slice_text(canvas, 0, 1, text_len, 0, -1)
             .unwrap();
-        self.clear_line();
+        self.clear_line(canvas);
     }
 
     // TODO: make this return the column position to the last char. Will do that with an allocator
-    fn anti_new_line(&self) {
+    fn anti_new_line(&self, canvas: &mut Canvas<'static>) {
         let text_len = self.text_buffer.max_char_x * (self.text_buffer.max_char_y - 1);
         self.text_buffer
-            .move_slice_text(0, 0, text_len, 0, 1)
+            .move_slice_text(canvas, 0, 0, text_len, 0, 1)
             .unwrap();
         self.text_buffer
-            .clear_line(0, self.background_code)
+            .clear_line(canvas, 0, self.background_code)
             .unwrap();
     }
 
-    fn cursor(&self, visible: bool) -> Result<(), OutOfBoundsError> {
+    fn cursor(&self, canvas: &mut Canvas<'static>, visible: bool) -> Result<(), OutOfBoundsError> {
         if self.column_position >= self.text_buffer.max_char_x {
             return Ok(());
         }
         let glyph = if visible { '▓' } else { ' ' };
         self.text_buffer.write_char(
+            canvas,
             glyph,
             self.column_position,
             self.text_buffer.max_char_y - 1,
@@ -250,7 +256,9 @@ impl Writer {
 
 impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.write_str(s).expect("Is not out of bounds");
+        let mut canvas = ScreenBuffer::canvas();
+        self.write_str(&mut canvas, s)
+            .expect("Is not out of bounds");
         Ok(())
     }
 }

@@ -7,7 +7,7 @@ use crate::memory::{
 };
 
 const HEAP_START: VirtualAddress = VirtualAddress(0xffff_c000_0000_0000); // index 384 of the l4 table, and above OFFSET + 2^MAXADDRPHYS (up to 46 bits)
-const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
+const HEAP_SIZE: usize = 1024 * 1024 * 16; // 16 MiB
 
 #[global_allocator]
 pub static ALLOCATOR: BumpAllocator = BumpAllocator::new();

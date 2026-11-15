@@ -47,7 +47,7 @@ pub fn init(scale_factor: usize) {
     );
 
     BUFFER.call_once(|| Mutex::new(ScreenBuffer::new(framebuffer_tag, framebuff_virt)));
-    WRITER.call_once(|| Mutex::new(Writer::new(scale_factor)));
+    WRITER.call_once(|| Mutex::new(Writer::new(&ScreenBuffer::canvas(), scale_factor)));
 }
 
 #[expect(dead_code)]

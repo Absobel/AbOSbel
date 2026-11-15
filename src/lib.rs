@@ -24,7 +24,7 @@ pub use arch::hlt_loop;
 
 use crate::{
     drivers::{
-        framebuffer::WRITER,
+        framebuffer::{BUFFER, WRITER},
         keyboard::flush_key_events,
         serial::EmergencySerialWriter,
     },
@@ -84,11 +84,13 @@ pub fn panic_report(info: &PanicInfo) {
     // Do not panic again if we are already panicking
     if !PANICKING.swap(true, Ordering::Relaxed) {
         let _ = writeln!(EmergencySerialWriter, "{info}");
-        // Only prints the panic message to the framebuffer if it is initialized and available
-        if let Some(writer) = WRITER.get()
-            && let Some(mut w) = writer.try_lock()
-        {
-            let _ = writeln!(w, "{info}");
+        // Force unlock the mutex to the framebuffer cause no one is going to use it again
+        if let Some(b) = BUFFER.get() {
+            unsafe { b.force_unlock() };
+        }
+        if let Some(w) = WRITER.get() {
+            unsafe { w.force_unlock() };
+            let _ = writeln!(w.lock(), "{info}");
         }
     }
 }
