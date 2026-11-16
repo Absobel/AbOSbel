@@ -1,9 +1,9 @@
 use core::fmt;
 
-use crate::drivers::framebuffer::{
+use crate::drivers::{framebuffer::{
     OutOfBoundsError,
     screen::{Canvas, Color, ScreenBuffer},
-};
+}, pic};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -150,6 +150,9 @@ pub struct Writer {
     background_code: Color,
     foreground_code: Color,
     text_buffer: TextBuffer,
+    // cursor stuff
+    last_write: u64,
+    cursor_visible: bool,
 }
 
 impl Writer {
@@ -159,6 +162,8 @@ impl Writer {
             background_code: Color::new(0, 0, 0, 255),
             foreground_code: Color::new(255, 255, 255, 255),
             text_buffer: TextBuffer::new(canvas, scale_factor),
+            last_write: 0,
+            cursor_visible: true,
         }
     }
 
@@ -179,6 +184,7 @@ impl Writer {
         canvas: &mut Canvas<'static>,
         string: &str,
     ) -> Result<(), OutOfBoundsError> {
+        self.last_write = pic::time();
         self.cursor(canvas, false)?;
         for char in string.chars() {
             match char {
@@ -238,10 +244,15 @@ impl Writer {
             .unwrap();
     }
 
-    fn cursor(&self, canvas: &mut Canvas<'static>, visible: bool) -> Result<(), OutOfBoundsError> {
-        if self.column_position >= self.text_buffer.max_char_x {
+    pub const fn get_last_write(&self) -> u64 {
+        self.last_write
+    }
+
+    pub fn cursor(&mut self, canvas: &mut Canvas<'static>, visible: bool) -> Result<(), OutOfBoundsError> {
+        if self.cursor_visible == visible || self.column_position >= self.text_buffer.max_char_x {
             return Ok(());
         }
+        self.cursor_visible = visible;
         let glyph = if visible { '▓' } else { ' ' };
         self.text_buffer.write_char(
             canvas,

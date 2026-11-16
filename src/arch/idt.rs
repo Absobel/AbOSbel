@@ -3,7 +3,7 @@ use spin::Once;
 
 use crate::{
     arch::{exceptions, gdt::KERNEL_CS},
-    drivers::{keyboard::keyboard, pic},
+    drivers::{keyboard, pic},
 };
 
 static IDT_ARR: Once<IdtArr> = Once::new();
@@ -37,7 +37,7 @@ pub fn init() {
         idt_arr.set_err(0x15, exceptions::control_protection, NO_IST);
 
         idt_arr.set(0x20, pic::timer, NO_IST);
-        idt_arr.set(0x21, keyboard, NO_IST);
+        idt_arr.set(0x21, keyboard::keyboard, NO_IST);
 
         idt_arr
     });

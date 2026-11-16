@@ -1,6 +1,6 @@
 ### What i'm working on currently
 
-* Cursor timer
+* rewrite the flush print ring to be named flush irq buffer prob, and make it not just use print!() cause that has some side effects
 * rewrite whatever is after the new allocator with the heap
 
 ### Testing

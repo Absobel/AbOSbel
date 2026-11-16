@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicU64, Ordering};
+
 use crate::arch::{
     idt::InterruptStackFrame,
     port::{self, Port},
@@ -101,6 +103,13 @@ pub fn send_eoi(irq: Interrupts) {
 
 // Handlers
 
+static TIME: AtomicU64 = AtomicU64::new(0);
+
+pub fn time() -> u64 {
+    TIME.load(Ordering::Relaxed)
+}
+
 pub extern "x86-interrupt" fn timer(_stack_frame: InterruptStackFrame) {
+    TIME.fetch_add(1, Ordering::Relaxed);
     send_eoi(Interrupts::Timer);
 }

@@ -24,8 +24,9 @@ pub use arch::hlt_loop;
 
 use crate::{
     drivers::{
-        framebuffer::{BUFFER, WRITER},
+        framebuffer::{BUFFER, WRITER, screen::ScreenBuffer},
         keyboard::flush_key_events,
+        pic,
         serial::EmergencySerialWriter,
     },
     memory::{PhysicalAddress, VirtualAddress},
@@ -99,10 +100,19 @@ pub fn flush_print_ring() {
     print!();
 }
 
+fn cursor_blink() {
+    let mut w = WRITER.get().expect("Writer required").lock();
+    let should_show = ((pic::time() - w.get_last_write()) / 20) % 2 == 0;
+    w.cursor(&mut ScreenBuffer::canvas(), should_show).unwrap();
+}
+
+/// # Panics
+/// This function should not panic except if something breaks in the framebuffer
 pub fn event_loop() -> ! {
     loop {
         flush_print_ring();
         flush_key_events();
+        cursor_blink();
 
         // TODO: check if interrupt just before hlt to not keep event queued until next interrupt
         arch::hlt();
